@@ -1,2 +1,11 @@
-# pharmacy-backrooms
-Escape the Pharmacy Backrooms - Qassim University Colege of Pharmacy horror game
+# باك رومز الصيدلة · Escape the Pharmacy Backrooms
+
+لعبة رعب ثلاثية الأبعاد في المتصفح: ثلاث مراحل بأسلوب الباك رومز داخل كلية الصيدلة بجامعة القصيم، وثلاثة دكاترة يلاحقونك.
+
+▶️ **العب هنا:** https://abo7km6070-stack.github.io/pharmacy-backrooms/
+
+- Level 0 · الردهة: د. مجاهد
+- Level 1 · موقف الكلية: د. منهاج
+- Level 2 · ممرات الأنابيب: د. أمل
+
+لعبة معجبين للضحك، غير رسمية وما لها علاقة بالجامعة. مستوحاة من أسلوب Escape the Backrooms. كل الرسوم والأصوات مصنوعة بالكود ما عدا أصوات الدكاترة.
