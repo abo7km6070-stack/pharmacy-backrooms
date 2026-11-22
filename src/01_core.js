@@ -43,7 +43,7 @@ const PostShader = {
         uv.x+=g*(h(vec2(row,floor(time*24.0)+1.0))-0.5)*0.12*glitch;
       }
       vec2 d=uv-0.5; float r2=dot(d,d);
-      float a=ca*(0.0015+r2*0.018)+glitch*0.01;
+      float a=ca*(0.0006+r2*0.008)+glitch*0.01;
       vec3 c=vec3(tex(uv+d*a).r, tex(uv).g, tex(uv-d*a).b);
       c=aces(c*exposure);
       c=pow(c,vec3(1.0/2.2));
@@ -68,7 +68,8 @@ function initRenderer() {
   R.scene = new THREE.Scene();
   R.camera = new THREE.PerspectiveCamera(74, 1, 0.04, 220);
   R.scene.add(R.camera);
-  R.composer = new THREE.EffectComposer(renderer);
+  const gl2 = renderer.capabilities.isWebGL2, rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: gl2 ? (isTouch ? 2 : 4) : 0 });
+  R.composer = new THREE.EffectComposer(renderer, rt); // MSAA on the scene pass: no more jagged edges / shimmering
   R.renderPass = new THREE.RenderPass(R.scene, R.camera);
   R.composer.addPass(R.renderPass);
   R.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(512, 512), 0.55, 0.55, 0.86);
@@ -82,7 +83,7 @@ function initRenderer() {
 }
 function resize() {
   const w = innerWidth, h = innerHeight;
-  const pr = Math.min(devicePixelRatio || 1, 1.5) * quality.scale;
+  const pr = Math.min(devicePixelRatio || 1, quality.scale >= 1 ? 2 : 1.5) * quality.scale;
   R.renderer.setPixelRatio(pr);
   R.renderer.setSize(w, h, false);
   R.composer.setPixelRatio(pr);
@@ -95,7 +96,7 @@ function resize() {
 
 /* ---------------- input ---------------- */
 const BIND_DEF = { fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', run: 'ShiftLeft', crouch: 'KeyZ', jump: 'Space', use: 'KeyE', light: 'KeyF', bag: 'Tab', peek: 'KeyQ', item: 'Mouse0' };
-const BIND_NAMES = { fwd: 'قدّام', back: 'ورا', left: 'يسار', right: 'يمين', run: 'ركض', crouch: 'انحناء', jump: 'قفز', use: 'تفاعل', light: 'كشاف الجوال', bag: 'الشنطة', peek: 'طلّ من الخزانة', item: 'استخدم الغرض اللي بيدك' };
+const BIND_NAMES = { fwd: 'قدّام', back: 'ورا', left: 'يسار', right: 'يمين', run: 'ركض', crouch: 'انحناء', jump: 'قفز', use: 'تفاعل', light: 'الكشاف', bag: 'الشنطة', peek: 'طلّ', item: 'استخدم الغرض اللي بيدك' };
 const Input = { keys: {}, lookX: 0, lookY: 0, joy: { x: 0, y: 0 }, tRun: false, tCrouch: false, locked: false, sens: store.get('sens', 1), binds: Object.assign({}, BIND_DEF, store.get('binds', {})), lastMove: 0 };
 const ALT_KEYS = { fwd: 'ArrowUp', back: 'ArrowDown' };
 function down(a) { return !!(Input.keys[Input.binds[a]] || (ALT_KEYS[a] && Input.keys[ALT_KEYS[a]])); }

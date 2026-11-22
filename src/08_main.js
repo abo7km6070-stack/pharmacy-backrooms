@@ -14,7 +14,7 @@ function newRun(levelId) {
 }
 function toMenu() {
   Game.state = 'title'; unlockPointer(); document.body.classList.remove('playing');
-  Game.monsters.forEach(m => m.deactivate()); partyStop(true);
+  Game.monsters.forEach(m => m.deactivate()); partyStop(true); if (A.ready) { musicStop(Music.cur, 0.3); Music.cur = null; Music.curId = ''; }
   ['hum', 'drone', 'pipe', 'wind'].forEach(b => setBed(b, 0)); if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume();
   UI.prompt(''); $('obj').classList.remove('on'); $('slats').classList.remove('on'); muffle(false);
   showScreen('title'); refreshLevels();
@@ -67,7 +67,7 @@ function renderBinds() {
     b.onclick = () => { b.classList.add('wait'); b.textContent = 'اضغط…'; Input.capture = code => { Input.capture = null; b.classList.remove('wait'); if (code) { for (const k in Input.binds) if (Input.binds[k] === code && k !== a) Input.binds[k] = Input.binds[a]; Input.binds[a] = code; const diff = {}; for (const k in Input.binds) if (Input.binds[k] !== BIND_DEF[k]) diff[k] = Input.binds[k]; store.set('binds', diff); } renderBinds(); }; };
     box.appendChild(row);
   });
-  const hk = $('howKeys'); if (hk) hk.innerHTML = Object.keys(BIND_DEF).map(a => `<kbd>${a === 'fwd' ? [Input.binds.fwd, Input.binds.left, Input.binds.back, Input.binds.right].map(keyLabel).join(' ') : keyLabel(Input.binds[a])}</kbd><span>${{ fwd: 'المشي', run: 'ركض (يتعب… إلا وقت المطاردة)', crouch: 'انحناء: تمشي بهدوء وتدخل تحت الطاولات', jump: 'قفز', use: 'تفاعل: ورقة، باب، خزانة، طاولة', light: 'كشاف الجوال', bag: 'الشنطة: شوف وش معك واختار وش بيدك', peek: 'طلّ من الخزانة' }[a] || ''}</span>`).filter((x, i) => !['back', 'left', 'right'].includes(Object.keys(BIND_DEF)[i])).join('') + '<kbd>1 – 9</kbd><span>امسك الغرض اللي برقمه</span><kbd>Esc</kbd><span>إيقاف</span>';
+  const hk = $('howKeys'); if (hk) hk.innerHTML = Object.keys(BIND_DEF).map(a => `<kbd>${a === 'fwd' ? [Input.binds.fwd, Input.binds.left, Input.binds.back, Input.binds.right].map(keyLabel).join(' ') : keyLabel(Input.binds[a])}</kbd><span>${{ fwd: 'المشي', run: 'ركض (يتعب… إلا وقت المطاردة)', crouch: 'انحناء: تمشي بهدوء وتدخل تحت الطاولات', jump: 'قفز', use: 'تفاعل: ورقة، باب، خزانة، طاولة', light: 'الكشاف (له بطارية)', bag: 'الشنطة: شوف وش معك واختار وش بيدك', peek: 'طلّ من الفتحة', item: 'استخدم الغرض اللي بيدك: اشرب، اشحن، ارمِ علبة' }[a] || ''}</span>`).filter((x, i) => !['back', 'left', 'right'].includes(Object.keys(BIND_DEF)[i])).join('') + '<kbd>1 – 9</kbd><span>امسك الغرض اللي برقمه</span><kbd>Esc</kbd><span>إيقاف</span>';
 }
 async function boot() {
   const bar = $('loadBar'), st = $('loadTxt');
@@ -78,7 +78,7 @@ async function boot() {
     await step(15, 'تجهيز الرسوم…');
     initRenderer();
     await step(30, 'رسم ورق الجدران والموكيت…');
-    buildTextures(); mkStyles();
+    buildTextures(); buildCollegeTextures(); mkStyles();
     await step(70, 'تجهيز الإضاءة…');
     worldReset(); initInput(); initTorch(); initLightPool(8); bindUI(); applyQuality(store.get('qual', isTouch ? 'med' : 'high'));
     await step(90, 'إيقاظ الدكاترة…');

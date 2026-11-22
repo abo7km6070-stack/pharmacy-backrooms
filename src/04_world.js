@@ -5,7 +5,7 @@ const World = {};
 function worldReset() {
   if (World.group) { R.scene.remove(World.group); disposeTree(World.group); }
   World.group = new THREE.Group(); R.scene.add(World.group);
-  World.colliders = []; World.dyn = []; World.interact = []; World.hides = []; World.doors = []; World.fixtures = []; World.triggers = []; World.updaters = []; World.voids = []; World.beams = []; World.floorsY = []; World.surfaces = [];
+  World.colliders = []; World.mcol = []; World.dyn = []; World.interact = []; World.hides = []; World.doors = []; World.fixtures = []; World.triggers = []; World.updaters = []; World.voids = []; World.beams = []; World.floorsY = []; World.surfaces = [];
   World.los = losCheck;
 }
 function disposeTree(o) { o.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) { (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => { if (m.map && m.map.userData && !m.map.userData.keep) { } m.dispose(); }); } }); }
@@ -90,9 +90,9 @@ function planeGeo(w, d, x, y, z, uv, down) {
 }
 /* ---------------- collision ---------------- */
 function addBoxCollider(x0, z0, x1, z1, y0 = -10, y1 = 10, tag) { const c = { x0: Math.min(x0, x1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), z1: Math.max(z0, z1), y0, y1, tag }; World.colliders.push(c); return c; }
-function collide(pos, r, feetY, headY) {
+function collide(pos, r, feetY, headY, extra) {
   for (let pass = 0; pass < 2; pass++) {
-    const list = World.colliders.concat(World.dyn);
+    const list = extra ? World.colliders.concat(World.dyn, extra) : World.colliders.concat(World.dyn);
     for (const c of list) {
       if (c.off) continue; if (headY < c.y0 || feetY > c.y1 - 0.05) continue;
       const qx = clamp(pos.x, c.x0, c.x1), qz = clamp(pos.z, c.z0, c.z1);
@@ -239,7 +239,7 @@ function updateLightPool(dt) {
 /* ---------------- props helpers ---------------- */
 const MAT = {};
 function stdMat(o) { return new THREE.MeshStandardMaterial(Object.assign({ roughness: 0.8, metalness: 0 }, o)); }
-function prop(geo, mat, x, y, z, ry = 0, col = true, parent) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; (parent || World.group).add(m); if (col) { geo.computeBoundingBox(); const b = geo.boundingBox; const hw = (b.max.x - b.min.x) / 2, hd = (b.max.z - b.min.z) / 2, c = Math.cos(ry), s = Math.sin(ry); const ex = Math.abs(c * hw) + Math.abs(s * hd), ez = Math.abs(s * hw) + Math.abs(c * hd); addBoxCollider(x - ex, z - ez, x + ex, z + ez, y + b.min.y, y + b.max.y); } return m; }
+function prop(geo, mat, x, y, z, ry = 0, col = true, parent) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; m.userData.static = true; (parent || World.group).add(m); if (col) { geo.computeBoundingBox(); const b = geo.boundingBox; const hw = (b.max.x - b.min.x) / 2, hd = (b.max.z - b.min.z) / 2, c = Math.cos(ry), s = Math.sin(ry); const ex = Math.abs(c * hw) + Math.abs(s * hd), ez = Math.abs(s * hw) + Math.abs(c * hd); addBoxCollider(x - ex, z - ez, x + ex, z + ez, y + b.min.y, y + b.max.y); } return m; }
 function poster(tex, x, y, z, ry, w = 0.9, h = 0.6) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 })); m.position.set(x, y, z); m.rotation.y = ry; World.group.add(m); return m; }
 /* wall-mounted item facing a direction: place at cell edge */
 function onWall(G, cx, cy, side, y, offset = 0) { // side: 'n','s','e','w' wall of cell
@@ -251,3 +251,18 @@ function onWall(G, cx, cy, side, y, offset = 0) { // side: 'n','s','e','w' wall 
 }
 function addInteract(o) { World.interact.push(o); return o; }
 function addTrigger(o) { World.triggers.push(o); return o; }
+
+/* static batching: merge every static furniture mesh that shares a look into one draw call */
+function staticBatch() {
+  const groups = new Map(), victims = [];
+  World.group.updateMatrixWorld(true);
+  const keyOf = m => [m.type, m.map ? m.map.uuid : '', m.color ? m.color.getHexString() : '', m.emissive ? m.emissive.getHexString() + m.emissiveIntensity : '', m.roughness, m.metalness, m.transparent ? m.opacity : 1, m.side].join('|');
+  for (const top of World.group.children) {
+    if (!top.userData.static) continue;
+    top.traverse(o => { if (!o.isMesh || o.isInstancedMesh || Array.isArray(o.material) || !o.geometry.attributes.uv) return; const k = keyOf(o.material); let e = groups.get(k); if (!e) { e = { mat: o.material, geos: [] }; groups.set(k, e); } let gg = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); for (const a of Object.keys(gg.attributes)) if (!['position', 'normal', 'uv'].includes(a)) gg.deleteAttribute(a); gg.applyMatrix4(o.matrixWorld); e.geos.push(gg); });
+    victims.push(top);
+  }
+  victims.forEach(v => World.group.remove(v));
+  let n = 0; for (const e of groups.values()) { const m = addMerged(e.geos, e.mat); if (m) n++; }
+  return n;
+}

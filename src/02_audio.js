@@ -168,11 +168,25 @@ const SFX = {
 };
 /* ---------- voice lines (ElevenLabs mp3s embedded as base64) ---------- */
 const VOICE_LINES = {
-  mujahid: { taunt1: 'm1', taunt2: 'm2', caught: 'm3', quiz: 'm4', idle: ['m5', 'm6', 'm7'], chase: ['m8', 'm1', 'm2'] },
-  minhaj: { lure: 'n1', taunt1: 'n2', taunt2: 'n3', caught: 'n4', idle: ['n5', 'n3'], chase: ['n6', 'n2'] },
-  amal: { taunt1: 'a1', dark: 'a2', taunt2: 'a3', caught: 'a4', idle: ['a5', 'a1'], chase: ['a6', 'a3'] }
+  mujahid: { taunt1: 'm1', taunt2: 'm2', caught: 'm3', quiz: 'm4', idle: ['m5', 'm6', 'm7', 'm10', 'm12'], chase: ['m8', 'm1', 'm2', 'm9', 'm11'], noise: ['m13', 'm9'] },
+  minhaj: { lure: 'n1', taunt1: 'n2', taunt2: 'n3', caught: 'n4', idle: ['n5', 'n3', 'n9', 'n10'], chase: ['n6', 'n2', 'n7'], noise: ['n8'] },
+  amal: { taunt1: 'a1', dark: 'a2', taunt2: 'a3', caught: 'a4', idle: ['a5', 'a1', 'a8', 'a11'], chase: ['a6', 'a3', 'a9', 'a7'], noise: ['a10', 'a7'] }
 };
 const SUBS = {
+  m9: 'د. مجاهد: <b>هَسّي بَسمَعَك… خُطواتَك بتِتكَلّم يا زُول!</b>',
+  m10: 'د. مجاهد: <b>إنتَ قايِل الطّاوِلة دي بِتَحمِيك؟ أنا عارِف كُل رُكن في الكُلّية دي.</b>',
+  m11: 'د. مجاهد: <b>يا زُووول! أطلَع… خَلّينا نِخلّص الكويز دا!</b>',
+  m12: 'د. مجاهد: <b>أنا وَراك… لا… قُدّامَك…</b>',
+  m13: 'د. مجاهد: <b>شِنو الصّوت دا؟… في زُول هِنا؟</b>',
+  n7: 'د. منهاج: <b><bdi dir="ltr">Beta, why are you running? Running is not allowed in the corridor!</bdi></b>',
+  n8: 'د. منهاج: <b><bdi dir="ltr">I heard that… Who is making noise during the exam?</bdi></b>',
+  n9: 'د. منهاج: <b><bdi dir="ltr">I am very close now… very, very close…</bdi></b>',
+  n10: 'د. منهاج: <b><bdi dir="ltr">Come, come… just one viva question. Only one.</bdi></b>',
+  a7: 'د. أمل: <b>سَمِعتَك يا قَلبي… لا تِتخَبّى مِنّي.</b>',
+  a8: 'د. أمل: <b>أنا شايفتَك… ورا الباب.</b>',
+  a9: 'د. أمل: <b>تَعااال! لا تِهرَب مِنّي!</b>',
+  a10: 'د. أمل: <b>إيش هالصّوت؟… في أحَد هِنا يا حِلوين؟</b>',
+  a11: 'د. أمل: <b>مَرّة بَاقي لَك شِوَيّة وتِتخَرّج… بَس مُو اليوم.</b>',
   m1: 'د. مجاهد: <b>يا زُول! إنتَ ماشي وين يا زُول؟ الامتحان لِسّه ما خَلَص!</b>',
   m2: 'د. مجاهد: <b>مالَك يا زُول؟ جاري مالَك كِدا؟ تَعال تَعال… ما في عَوجة. سُؤال واحِد بَس.</b>',
   m3: 'د. مجاهد: <b>هُوي! لِحِقتَك يا زُول! خَلاص… المادّة دي بِتعيدها مَعاي السَّنة الجايّة.</b>',
@@ -235,5 +249,5 @@ function audioFrame(dt) {
   const chase = Game.chase;
   A.chaseG.gain.setTargetAtTime(chase * 0.5, A.ctx.currentTime, chase > 0 ? 0.25 : 2.2);
   A.chaseF.frequency.setTargetAtTime(400 + 2800 * chase * clamp(stress, 0, 1), A.ctx.currentTime, 0.3);
-  partyTick();
+  partyTick(); musicFrame(dt);
 }

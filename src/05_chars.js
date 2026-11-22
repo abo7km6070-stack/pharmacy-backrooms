@@ -227,7 +227,7 @@ class Monster {
       else if (this.lastSeenPos) this.goto(this.lastSeenPos.x, this.lastSeenPos.z);
       if (Game.t > this.voiceT) { this.voiceT = Game.t + rnd(4.5, 7); this.taunt(true); }
     } else {
-      for (const n of Game.noises) { const nd = Math.hypot(n.x - this.pos.x, n.z - this.pos.z); if (nd < n.r * this.hear) { this.state = 'investigate'; this.goto(n.x, n.z); break; } }
+      for (const n of Game.noises) { const nd = Math.hypot(n.x - this.pos.x, n.z - this.pos.z); if (nd < n.r * this.hear) { if (this.state !== 'investigate' && n.r >= 12 && Game.t > (this.noiseVT || 0)) { this.noiseVT = Game.t + 10; const L = VOICE_LINES[this.type].noise; if (L) later(() => voice(pick(L), this.pos.x, this.pos.z, { force: true }), 500); } this.state = 'investigate'; this.goto(n.x, n.z); break; } }
       if (this.state === 'investigate' && !this.path.length && this.repath > 0.2) { this.state = 'search'; this.searchT = Game.t + 6; }
       if (this.state === 'search') { if (Game.t > this.searchT) { this.state = 'wander'; this.combT = 0; } else if (!this.path.length && this.repath > 0.5) { const c = this.randomCellNear(this.lastSeenPos || this.pos, 3); if (c) this.goto(c[0], c[1]); } }
       if (this.state === 'wander' && !this.path.length) {
@@ -252,7 +252,7 @@ class Monster {
     if (d < 7 && Game.t > (this.breathT || 0)) { this.breathT = Game.t + (this.state === 'chase' ? 0.9 : 1.8); SFX.mbreath && SFX.mbreath(this.pos.x, this.pos.z, this.type, this.state === 'chase'); }
     Game.stress = Math.max(Game.stress, clamp(1 - d / 14, 0, 1) * (this.state === 'chase' ? 1 : 0.6));
   }
-  onSpot() { this.state = 'chase'; this.spotT = Game.t; this.voiceT = Game.t + 0.4; if (Game.t - (this.lastScream || -99) > 20) { this.lastScream = Game.t; SFX.stinger(); } }
+  onSpot() { this.state = 'chase'; this.spotT = Game.t; this.voiceT = Game.t + 0.4; if (Game.t - (this.lastScream || -99) > 20) { this.lastScream = Game.t; sample('sfx_sting', 0, 0, { flat: true, vol: 0.9 }); if (Math.random() < 0.5) later(() => sample(SCREAM_OF[this.type], this.pos.x, this.pos.z, { vol: 0.8 }), 300); } }
   taunt(chase) { const v = VOICE_LINES[this.type]; const lines = chase && v.chase ? v.chase : [v.taunt1, v.taunt2, v.quiz || v.lure].filter(Boolean); if (!voice(pick(lines), this.pos.x, this.pos.z) && Math.random() < 0.5) SFX.laughSynth(this.pos.x, this.pos.z, this.type === 'amal' ? 1.5 : this.type === 'minhaj' ? 0.85 : 0.75); }
   followPath(dt, spd) {
     const G = World.grid; this.repath += dt;
@@ -288,7 +288,7 @@ class Monster {
     this.yaw += clamp(da, -this.turn * dt, this.turn * dt);
     const turnSlow = 1 - Math.min(0.55, Math.abs(da) * 0.5); // corners slow them down (lets skilled players escape)
     const v = Math.min(dd, spd * turnSlow * dt); const ox = this.pos.x, oz = this.pos.z; const n = Math.max(1, Math.ceil(v / 0.08));
-    for (let i = 0; i < n; i++) { this.pos.x += Math.sin(this.yaw) * v / n; this.pos.z += Math.cos(this.yaw) * v / n; collide(this.pos, this.radius || 0.3, 0.3, 1.8); }
+    for (let i = 0; i < n; i++) { this.pos.x += Math.sin(this.yaw) * v / n; this.pos.z += Math.cos(this.yaw) * v / n; collide(this.pos, this.radius || 0.3, 0.3, 1.8, World.mcol); }
     this.speed = Math.hypot(this.pos.x - ox, this.pos.z - oz) / dt; if (this.speed < spd * 0.15 && v > 0.01) { this.blocked = (this.blocked || 0) + dt; if (this.blocked > 1.2) { this.blocked = 0; this.repath = 99; this.path = []; } } else this.blocked = 0;
   }
   finishMove(dt) {

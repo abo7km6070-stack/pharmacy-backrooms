@@ -118,3 +118,51 @@ function signTex(opts) {
   });
 }
 function imgTex(dataUrl, cb) { const t = new THREE.Texture(); const im = new Image(); im.onload = () => { t.image = im; t.needsUpdate = true; cb && cb(t); }; im.src = dataUrl; t.encoding = THREE.sRGBEncoding; return t; }
+/* ---------------- real-college materials (Qassim pharmacy building style) ---------------- */
+function buildCollegeTextures() {
+  const N = isTouch ? 512 : 1024;
+  // polished white porcelain tiles, 60cm, faint veins + grout
+  TEX.tile = canvasTex(N, N, (g, w, h) => {
+    field(g, w, h, (u, v, x, y) => {
+      const t = 4, gu = (u * t) % 1, gv = (v * t) % 1, cell = Math.floor(u * t) + Math.floor(v * t) * 7;
+      const vein = Math.abs(fbm(u * 5 + cell, v * 5, 5, 17 + cell, 4) - 0.5) < 0.012 ? 0.9 : 1;
+      let k = (0.94 + hash2(Math.floor(u * t), Math.floor(v * t), 3) * 0.05 + fbm(u * 9, v * 9, 9, 7, 3) * 0.04) * vein;
+      if (gu < 0.006 || gv < 0.006 || gu > 0.994 || gv > 0.994) k = 0.62;
+      const dirt = Math.max(0, fbm(u * 3, v * 3, 3, 91, 4) - 0.6) * 0.5; k -= dirt;
+      return [236 * k, 233 * k, 226 * k];
+    });
+  });
+  // brown marble used for the central strip of the main corridor
+  TEX.marble = canvasTex(512, 512, (g, w, h) => {
+    field(g, w, h, (u, v) => { const n = fbm(u * 4, v * 4, 4, 23, 5), vein = Math.abs(Math.sin((u + n * 1.6) * 18)) < 0.06 ? 1.25 : 1; const k = (0.55 + n * 0.5) * vein; return [120 * k, 84 * k, 62 * k]; });
+    g.strokeStyle = 'rgba(30,20,10,.5)'; g.lineWidth = 3; g.strokeRect(0, 0, w, h);
+  });
+  // painted plaster wall, off-white, with a beige stone skirting band at the bottom
+  TEX.plaster = canvasTex(N, N, (g, w, h) => {
+    field(g, w, h, (u, v, x, y) => {
+      const n = fbm(u * 14, v * 14, 14, 41, 4), big = fbm(u * 2, v * 2, 2, 42, 3);
+      let r = 232, gg = 228, b = 216, k = 0.93 + n * 0.06 + big * 0.03;
+      if (v > 0.88) { r = 196; gg = 174; b = 138; k = 0.85 + fbm(u * 8, v * 30, 8, 5, 3) * 0.2; if (v < 0.885) k *= 0.6; }
+      const grime = Math.max(0, fbm(u * 6, v * 2 + 3, 6, 77, 4) - 0.58) * (v > 0.6 ? 0.9 : 0.35); k -= grime;
+      const scuff = v > 0.75 && v < 0.88 && hash2(Math.floor(u * 90), Math.floor(v * 40), 9) > 0.985 ? 0.8 : 1;
+      return [r * k * scuff, gg * k * scuff, b * k * scuff];
+    });
+  });
+  // 60x60 white ceiling grid
+  TEX.ceilGrid = canvasTex(512, 512, (g, w, h) => {
+    field(g, w, h, (u, v, x, y) => { const gu = (u * 4) % 1, gv = (v * 4) % 1; let k = 0.9 + fbm(u * 12, v * 12, 12, 8, 3) * 0.08 + (hash2(x, y, 2) > 0.95 ? -0.06 : 0); if (gu < 0.02 || gv < 0.02) k = 0.7; const st = fbm(u * 2, v * 2, 2, 19, 4); if (st > 0.67) k *= 1 - (st - 0.67) * 1.4; return [238 * k, 236 * k, 230 * k]; });
+  });
+  // wooden lecture-hall door with steel kick plate + number plate area
+  TEX.woodDoor = canvasTex(256, 512, (g, w, h) => {
+    field(g, w, h, (u, v) => { const n = fbm(u * 2, v * 26, 2, 81, 4); const k = 0.72 + n * 0.32; return [168 * k, 120 * k, 78 * k]; });
+    g.fillStyle = 'rgba(200,200,205,.9)'; g.fillRect(10, h - 60, w - 20, 46);
+    g.fillStyle = '#b9bcc0'; g.fillRect(w - 46, h * 0.48, 30, 10); g.fillStyle = 'rgba(20,30,40,.85)'; g.fillRect(w * 0.3, h * 0.18, w * 0.4, h * 0.22);
+  });
+  TEX.bookSpines = canvasTex(512, 128, (g, w, h) => { let x = 0; const cols = ['#7a2424', '#24427a', '#24603a', '#a07a30', '#4a305a', '#8a8a8a', '#3a3a3a', '#b05a20']; while (x < w) { const bw = 7 + Math.random() * 16, bh = h * (0.72 + Math.random() * 0.28); g.fillStyle = cols[(Math.random() * cols.length) | 0]; g.fillRect(x, h - bh, bw - 1, bh); g.fillStyle = 'rgba(255,230,160,.5)'; g.fillRect(x + 2, h - bh + 10, bw - 5, 3); g.fillRect(x + 2, h - 18, bw - 5, 2); x += bw; } });
+  TEX.medBoxes = canvasTex(512, 128, (g, w, h) => { let x = 0; const cols = ['#ffffff', '#e8f1fa', '#fff6e8', '#f2fff2']; const stripe = ['#1e5bc6', '#c62828', '#2e8b3e', '#e08a1a', '#7a3aa0', '#0f8a8a']; while (x < w) { const bw = 22 + Math.random() * 30, bh = h * (0.45 + Math.random() * 0.5); g.fillStyle = cols[(Math.random() * cols.length) | 0]; g.fillRect(x, h - bh, bw - 2, bh); g.fillStyle = stripe[(Math.random() * stripe.length) | 0]; g.fillRect(x, h - bh + bh * 0.25, bw - 2, bh * 0.18); g.fillStyle = '#333'; g.font = 'bold 9px Arial'; g.fillText(['mg', 'Tab', '500', 'Caps', '20mg'][(Math.random() * 5) | 0], x + 3, h - 8); x += bw; } });
+  TEX.glassDoor = canvasTex(256, 512, (g, w, h) => {
+    const grd = g.createLinearGradient(0, 0, w, h); grd.addColorStop(0, '#1a2a30'); grd.addColorStop(1, '#0b1418'); g.fillStyle = grd; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#9aa0a6'; g.lineWidth = 18; g.strokeRect(9, 9, w - 18, h - 18); g.fillStyle = '#c8ccd0'; g.fillRect(w - 40, h * 0.42, 12, h * 0.16);
+    g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.moveTo(30, 30); g.lineTo(90, 30); g.lineTo(30, 200); g.fill();
+  });
+}
