@@ -244,7 +244,7 @@ class Monster {
     if (this.state !== 'chase' && d < 18 && Game.t > (this.idleT || 0)) { this.idleT = Game.t + rnd(7, 12); const L = VOICE_LINES[this.type].idle; if (L) voice(pick(L), this.pos.x, this.pos.z, { vol: 0.9 }); }
     // catch
     if (d < this.catchR && !Player.inHole && ((!Player.hidden && !Player.hiddenUnderTable) || this.sawHide) && Game.state === 'play' && !Player.safe) { Game.die(this, this.sawHide ? 'شافك وأنت تتخبى. اكسر خط النظر أول (لف زاوية أو سكّر باب) وبعدين تخبى.' : undefined); return; }
-    const spd = this.state === 'chase' ? this.run : this.state === 'investigate' ? this.walk * 1.7 : this.walk;
+    const spd = this.state === 'chase' ? this.run : this.state === 'investigate' ? (Game.t < (this.alertT || 0) ? this.run * 0.92 : this.walk * 1.7) : this.walk;
     if (this.state === 'chase' && sees && d < 3.2 && !this.bang) { this.path = [[P.x, P.z]]; this.repath = 0.25; }
     this.followPath(dt, spd);
     this.finishMove(dt);

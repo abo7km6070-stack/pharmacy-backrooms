@@ -29,16 +29,16 @@ function musicTrack(id, vol) {
 function musicFade(tr, v, tc = 1.5) { if (tr) tr.g.gain.setTargetAtTime(v, A.ctx.currentTime, tc); }
 function musicStop(tr, tc = 1.2) { if (!tr) return; musicFade(tr, 0, tc); setTimeout(() => { try { tr.s.stop(); } catch (e) { } }, tc * 5000); }
 function musicLevel(id) {
-  if (!A.ready || !A.voices.mus_amb1 || !A.voices.mus_party) return; if (Music.curId === id) return; Music.curId = id;
+  if (!A.ready || !A.voices.mus_party) return; if (Music.curId === id) return; Music.curId = id;
   musicStop(Music.cur); Music.cur = null;
-  const map = { L0: ['mus_amb1', 0.32], L1: ['mus_amb2', 0.34], L2: ['mus_amb1', 0.3], END: ['mus_party', 0.55] };
+  const map = { END: ['mus_party', 0.55] }; // the floors have no music: only the building (see 02c_dread.js)
   const m = map[id]; if (m) { Music.cur = musicTrack(m[0], m[1]); if (Music.cur) { musicFade(Music.cur, m[1], 2.5); if (id === 'L2') Music.cur.s.playbackRate.value = 0.85; } }
-  if (!Music.chase) Music.chase = musicTrack('mus_chase', 0.6);
+  if (!Music.chase) Music.chase = musicTrack('mus_chase', 0.45);
   Game.partyRecorded = id === 'END' && !!Music.cur; if (Game.partyRecorded && Party.on) partyStop(true);
 }
 function musicFrame(dt) {
   if (!A.ready) return;
-  if (!Music.chase && A.voices.mus_chase) Music.chase = musicTrack('mus_chase', 0.6);
+  if (!Music.chase && A.voices.mus_chase) Music.chase = musicTrack('mus_chase', 0.45);
   if (Game.level && Game.state !== 'title' && Music.curId !== Game.level.id) musicLevel(Game.level.id);
   const want = Game.state === 'play' || Game.state === 'bag' ? clamp(Game.chase, 0, 1) : 0;
   if (Math.abs(want - Music.wantChase) > 0.05) { Music.wantChase = want; musicFade(Music.chase, want * Music.chase?.vol || 0, want > 0 ? 0.4 : 2.5); if (Music.cur) musicFade(Music.cur, Music.cur.vol * (1 - want * 0.75), 1); }

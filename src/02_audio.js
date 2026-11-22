@@ -49,7 +49,8 @@ function buildAmbience() {
   // fluorescent hum: 120Hz + harmonics, slightly buzzy
   A.humG = c.createGain(); A.humG.gain.value = 0; A.humG.connect(A.amb);
   const hf = c.createBiquadFilter(); hf.type = 'bandpass'; hf.frequency.value = 240; hf.Q.value = 0.8; hf.connect(A.humG);
-  for (const [f, v] of [[120, .5], [240, .35], [360, .18], [480, .1], [1440, .03]]) { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f + rnd(-.3, .3); const g = c.createGain(); g.gain.value = v * 0.05; o.connect(g); g.connect(hf); o.start(); }
+  for (const [f, v] of [[120, .5], [240, .35], [360, .18], [480, .1], [1440, .03]]) { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f + rnd(-.3, .3); const g = c.createGain(); g.gain.value = v * 0.085; o.connect(g); g.connect(hf); o.start(); }
+  { const am = c.createOscillator(); am.frequency.value = 0.31; const ag = c.createGain(); ag.gain.value = 0.25; am.connect(ag); ag.connect(hf.frequency); am.start(); }
   const hn = c.createBiquadFilter(); hn.type = 'highpass'; hn.frequency.value = 3500; const hng = c.createGain(); hng.gain.value = 0.012; loopSrc(A.white).connect(hn); hn.connect(hng); hng.connect(A.humG);
   // flicker modulation node (driven by game)
   A.humMod = hng;
@@ -249,5 +250,5 @@ function audioFrame(dt) {
   const chase = Game.chase;
   A.chaseG.gain.setTargetAtTime(chase * 0.5, A.ctx.currentTime, chase > 0 ? 0.25 : 2.2);
   A.chaseF.frequency.setTargetAtTime(400 + 2800 * chase * clamp(stress, 0, 1), A.ctx.currentTime, 0.3);
-  partyTick(); musicFrame(dt);
+  partyTick(); musicFrame(dt); dreadFrame(dt);
 }

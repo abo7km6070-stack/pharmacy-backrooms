@@ -38,7 +38,7 @@ function hallDoors(G, r, opts = {}) {
   const tryDoor = (x, y, nx, ny) => { if (G.inside(nx, ny) && G.floor[ny * G.W + nx]) ds.push(addDoor(G, x, y, nx, ny, Object.assign({ tex: TEX.woodDoor, trim: 0x8a8f94, width: 1.15, height: 2.3 }, opts))); };
   if (r.y1 === 7) tryDoor(mx, 7, mx, 8);
   if (r.y0 === 10) tryDoor(mx, 10, mx, 9);
-  if (r.y1 === 14 && !r.oneDoor) tryDoor(mx, 14, mx, 15);
+  if (r.y1 === 14 && r.twoDoors) tryDoor(mx, 14, mx, 15); // middle halls: one door only, so the board wall is free
   if (r.y0 === 17) tryDoor(mx, 17, mx, 16);
   return ds;
 }
@@ -110,9 +110,9 @@ function whiteboard(x, z, ry, w = 3.4, lines) { const t = signTex({ w: 1024, h: 
 function chairMesh(x, z, ry) { const g = new THREE.Group(); const m = stdMat({ color: 0x2a3e5c, roughness: 0.6 }), mt = stdMat({ color: 0x333, metalness: 0.7 }); const s = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.05, 0.42), m); s.position.y = 0.46; g.add(s); const b = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.42, 0.05), m); b.position.set(0, 0.7, -0.2); g.add(b); const l = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.45, 6), mt); l.position.y = 0.23; g.add(l); g.position.set(x, 0, z); g.rotation.y = ry; g.userData.static = true; World.group.add(g); }
 function lectureHall(G, r, title) {
   const W = roomW(r); const rows = Math.floor((W.z1 - W.z0 - 3.4) / 1.35), cols = Math.floor((W.x1 - W.x0 - 1.4) / 2.1);
-  const facingNorth = r.y0 >= 10; // board on the far wall from the corridor door
+  const facingNorth = r.y1 === 7; // the board always hangs on the wall opposite the door
   for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) { if (Math.random() < 0.12) continue; const x = W.x0 + 1.2 + j * 2.1 + 0.8, z = facingNorth ? W.z0 + 2.6 + i * 1.35 : W.z1 - 2.6 - i * 1.35; deskMesh(x, z, 0); chairMesh(x - 0.4, z + (facingNorth ? 0.55 : -0.55), facingNorth ? Math.PI : 0); chairMesh(x + 0.4, z + (facingNorth ? 0.55 : -0.55), facingNorth ? Math.PI : 0); }
-  const bz = facingNorth ? W.z0 + 0.12 : W.z1 - 0.12; whiteboard(W.cx, bz, facingNorth ? 0 : Math.PI, 3.6, [{ t: title || '', y: 110, s: 64, c: '#1a3a7a', f: 'Arial' }, { t: pick(['HbA1c < 7%', 'ACE-I → cough', 'Warfarin + INR', 'CYP3A4 inhibitors', 'Metformin: 1st line', 'Loop diuretics → ↓K⁺']), y: 220, s: 54, c: '#222', f: 'Arial' }, { t: pick(['اختبار الأحد ٨ ص', 'لا تنسون الواجب', 'كويز مفاجئ 🙂', 'الحضور إلزامي']), y: 330, s: 50, c: '#b11' }]);
+  const bz = facingNorth ? W.z0 + 0.12 : W.z1 - 0.12; r.board = whiteboard(W.cx, bz, facingNorth ? 0 : Math.PI, 3.6, [{ t: title || '', y: 110, s: 64, c: '#1a3a7a', f: 'Arial' }, { t: pick(['HbA1c < 7%', 'ACE-I → cough', 'Warfarin + INR', 'CYP3A4 inhibitors', 'Metformin: 1st line', 'Loop diuretics → ↓K⁺']), y: 220, s: 54, c: '#222', f: 'Arial' }, { t: pick(['اختبار الأحد ٨ ص', 'لا تنسون الواجب', 'كويز مفاجئ 🙂', 'الحضور إلزامي']), y: 330, s: 50, c: '#b11' }]);
   const pod = prop(new THREE.BoxGeometry(1.0, 1.1, 0.6), stdMat({ color: 0x6a4a30 }), W.cx + 2.4, 0.55, facingNorth ? W.z0 + 1.1 : W.z1 - 1.1, 0, true);
 }
 function officeRoom(G, r) { const W = roomW(r); const x = W.cx + (r.side === 'w' ? -0.4 : 0.4); deskMesh(x, W.cz, Math.PI / 2); chairMesh(x + (r.side === 'w' ? -0.7 : 0.7), W.cz, r.side === 'w' ? -Math.PI / 2 : Math.PI / 2); shelfMesh(W.cx, W.z0 + 0.3, 0, 2.2, 1.8); }
@@ -142,22 +142,23 @@ function balloon(x, z, y = rnd(1.4, 2.2)) {
   const b = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 12), new THREE.MeshStandardMaterial({ color: col, roughness: 0.2, metalness: 0.05 })); b.scale.y = 1.2; b.position.set(x, y, z); World.group.add(b);
   const str = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, y - 0.2, 3), stdMat({ color: 0xeeeeee })); str.position.set(x, (y - 0.2) / 2, z); World.group.add(str);
   const ph = rnd(0, 6); World.updaters.push(() => { if (b.parent) b.position.y = y + Math.sin(Game.t * 1.1 + ph) * 0.03; });
-  const pop = () => { if (!b.parent) return; World.group.remove(b); World.group.remove(str); sample('sfx_pop', x, z, { vol: 1.4 }); Game.noise(x, z, 32); Game.shake(0.15); };
-  const it = addInteract({ pos: { x, y, z }, r: 1.8, label: 'افقع البالونة 🎈', use: () => { it.done = true; pop(); UI.msg('بوم!… أكيد سمعها.', 1800); } });
+  const pop = () => { if (!b.parent) return; World.group.remove(b); World.group.remove(str); sample('sfx_pop', x, z, { vol: 1.4 }); Game.noise(x, z, 32); Game.shake(0.15); alertDoctors(x, z); };
+  const it = addInteract({ pos: { x, y, z }, r: 1.8, label: 'افقع البالونة 🎈', use: () => { it.done = true; pop(); UI.msg('<b>بوم!</b> … سمعها. وجاي يركض. ابعد عن هنا!', 2600); } });
   return { pop: () => { it.done = true; pop(); }, b };
 }
 function canOnFloor(x, z) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.033, 0.12, 10), new THREE.MeshStandardMaterial({ color: pick([0xd22, 0x1a8cff, 0xeee]), metalness: 0.8, roughness: 0.3 })); c.rotation.z = Math.PI / 2; c.position.set(x, 0.033, z); World.group.add(c); const v = { x: 0, z: 0 }; let cd = 0;
   World.updaters.push(dt => { cd -= dt; const P = Player.pos, d = Math.hypot(P.x - c.position.x, P.z - c.position.z); if (d < 0.45 && cd <= 0 && Player.moveAmt > 0.5) { cd = 1; const a = Math.atan2(c.position.x - P.x, c.position.z - P.z); v.x = Math.sin(a) * (1.5 + Player.moveAmt * 0.5); v.z = Math.cos(a) * (1.5 + Player.moveAmt * 0.5); sample('sfx_can', c.position.x, c.position.z, { vol: Player.crouch > 0.5 ? 0.4 : 1 }); Game.noise(c.position.x, c.position.z, Player.crouch > 0.5 ? 5 : 14); }
     if (Math.abs(v.x) + Math.abs(v.z) > 0.01) { c.position.x += v.x * dt; c.position.z += v.z * dt; c.rotation.y += dt * 8; v.x *= 0.93; v.z *= 0.93; collide(c.position, 0.05, 0, 0.2); } }); }
+function fireAlarmOn(G, cx, cy, pref) { const sd = wallSide(G, cx, cy, pref); if (!sd) return; const p = onWall(G, cx, cy, sd, 0); fireAlarm(p.x + Math.sin(p.ry) * 0.06, p.z + Math.cos(p.ry) * 0.06, p.ry); }
 function fireAlarm(x, z, ry) { const g = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.06), new THREE.MeshStandardMaterial({ color: 0xc81414, emissive: 0x400000 })); g.position.set(x, 1.35, z); g.rotation.y = ry; World.group.add(g);
-  const it = addInteract({ pos: { x, y: 1.35, z }, r: 1.6, once: true, label: 'اسحب إنذار الحريق 🔔 (يلهيه)', use: () => { for (let i = 0; i < 3; i++) later(() => sample('sfx_bell', x, z, { vol: 1.5 }), i * 3200); Game.noise(x, z, 80); Game.monsters.forEach(m => { if (m.state !== 'off' && m.state !== 'lure' && m.state !== 'dark') { m.state = 'investigate'; m.goto(x, z); m.path = []; m.repath = 99; } }); UI.msg('🔔 الإنذار يصيح… كل الدكاترة رايحين له. اهرب الحين!', 3200); } }); }
+  const it = addInteract({ pos: { x, y: 1.35, z }, r: 1.6, once: true, label: 'اسحب إنذار الحريق 🔔 (يلهيه)', use: () => { for (let i = 0; i < 3; i++) later(() => sample('sfx_bell', x, z, { vol: 1.5 }), i * 3200); Game.noise(x, z, 80); alertDoctors(x, z); UI.msg('🔔 الإنذار يصيح… كل الدكاترة رايحين له. اهرب الحين!', 3200); } }); }
 /* throwing an empty bottle: lands with a crash and pulls the doctor there */
 function throwBottle() {
   const P = Player, fx = -Math.sin(P.yaw) * Math.cos(P.pitch), fz = -Math.cos(P.yaw) * Math.cos(P.pitch), fy = Math.sin(P.pitch);
   const m = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.2, 10), new THREE.MeshStandardMaterial({ color: 0x9fd8c8, transparent: true, opacity: 0.6, roughness: 0.05 }));
   const pos = new THREE.Vector3(P.pos.x + fx * 0.4, P.eyeY() - 0.1, P.pos.z + fz * 0.4), vel = new THREE.Vector3(fx * 11, fy * 11 + 3, fz * 11); m.position.copy(pos); World.group.add(m);
   World.updaters.push(function f(dt) { if (!m.parent) return; vel.y -= 14 * dt; const ox = pos.x, oz = pos.z; pos.addScaledVector(vel, dt); m.position.copy(pos); m.rotation.x += dt * 12; const before = pos.x + pos.z; collide(pos, 0.05, pos.y - 0.05, pos.y + 0.05); const hitWall = Math.abs(pos.x + pos.z - before) > 1e-4;
-    if (pos.y <= 0.05 || hitWall || pos.y > CWH - 0.1) { World.group.remove(m); SFX.bulbPop(pos.x, pos.z); SFX.clank(pos.x, pos.z); Game.noise(pos.x, pos.z, 40); Game.monsters.forEach(mm => { if (mm.state === 'wander' || mm.state === 'search' || mm.state === 'investigate') { mm.state = 'investigate'; mm.goto(pos.x, pos.z); mm.repath = 99; } }); UI.msg('…كراااش', 1200); } });
+    if (pos.y <= 0.05 || hitWall || pos.y > CWH - 0.1) { World.group.remove(m); SFX.bulbPop(pos.x, pos.z); SFX.clank(pos.x, pos.z); Game.noise(pos.x, pos.z, 40); alertDoctors(pos.x, pos.z, Math.random() < 0.6); UI.msg('…كراااش', 1200); } });
   SFX.paper && SFX.paper();
 }
 ITEMS.bottle = { name: 'علبة زجاج فاضية', icon: '🍾', desc: 'ارمها بزر «استخدم» عشان تلهي الدكتور: يروح للمكان اللي تطيح فيه.', use() { throwBottle(); return true; } };
@@ -180,7 +181,7 @@ function knockSpawn(m, voiceId) { const G = World.grid, P = Player.pos; let best
    FLOOR 1 · الدور الأرضي — د. مجاهد
    ===================================================================== */
 Object.assign(NOTES, {
-  F1: { head: 'ورقة ملصوقة على مكتب الاستقبال', sig: '— طالب سنة رابعة', text: 'الكلية مقفلة والكهرباء طافية… <b>والدرج عليه شتر حديد</b>.<br>• عشان ينفتح لازم ترجّع الكهرباء: <b>٣ فيوزات</b> متفرقة في القاعات، ركّبها في <b>غرفة الكهرباء</b> جنب الدرج الغربي.<br>• مفتاح غرفة الكهرباء <b>في درج مكتب الاستقبال</b>.<br>• فيه مكينة مشروبات تحت الدرج… تبي <b>ريال</b> 🪙 (بالمكاتب).<br>• إذا سمعت <b>طرق</b>… د. مجاهد صحى. لا تركض جنبه، اكسر خط النظر، وتخبى <b>تحت الطاولات</b> أو في <b>فتحات الجدار</b>.<br>• البالونات تفقع… والعلب ترن. كل صوت يجيبه.' },
+  F1: { head: 'ورقة تحت يدك… بخط مرتجف', sig: '— طالب نام هنا قبلك', text: 'إذا صحيت والقاعة فاضية… <b>لا تصرخ.</b><br>الكلية ما تطلع لبرا. جربت الباب الرئيسي <b>٣٦ مرة</b>، وكل مرة أرجع لنفس المقعد.<br>الطريق الوحيد: <b>الدرج اللي آخر الممر الرئيسي</b>. عليه شتر حديد، وما يرتفع إلا إذا رجعت الكهرباء:<br>١) مفتاح غرفة الكهرباء في <b>درج مكتب الاستقبال</b> (عند المدخل).<br>٢) فيه <b>٣ فيوزات</b> في القاعات <b>المظلمة</b>.<br>٣) ركّبها في <b>غرفة الكهرباء</b> (آخر الممر الغربي، جنب الدرج الجانبي).<br><br><b>د. مجاهد ما طلع.</b> يسمع كل شي. إذا سمعت «يا زول»… لا ترد، لا تركض. انحنِ وادخل تحت طاولة قبل لا يشوفك، أو ازحف في فتحة بالجدار.<br>والبالونات؟ إذا فقعت وحدة… <b>يجي يركض.</b> استخدمها عشان تبعده عنك.' },
   F2: { head: 'ورقة على درابزين الدور الثاني', sig: '— ؟', text: 'الدور الثاني.<br>• <b>يسار</b>: قسم الطلاب (المختبرات). <b>يمين</b>: قسم الطالبات… <b>الأبواب مقفلة. لا تحاول.</b><br>• بوابة الدرج للدور الثالث تبي <b>٤ مفاتيح</b> تلفها <b>خلال ٥ ثواني</b>.<br>• ٣ مفاتيح في <b>خزائن المعاطف</b> بالمختبرات، والرابع في <b>مخزن الصيدلية الافتراضية</b>… وقفله أرقام ألوان.<br>• د. منهاج <b>ما يقدر يفتح الأبواب</b>، بس <b>يقلّد الأصوات</b>. لا تروح للصوت.' },
   F3: { head: 'ورقة على باب الدرج', sig: '— فني الصيانة', text: 'الدور الثالث: مكاتب الدكاترة والإدارة… و<b>قاعة M</b>.<br>• النور يطفي كل شوي، ود. أمل <b>تمشي في الظلام</b>.<br>• إذا طفى: <b>ثبّت نور الكشاف على وجهها</b>. النور يوقفها. إذا شلته… تقرب.<br>• كلمة سر قاعة M في <b>مكتب وكيل الكلية</b> (يمين).<br>• قاعة M: <b>يسار</b> بعد مكاتب الدكاترة، وبعدين <b>يمين</b>.' },
   store: { head: 'ورقة على باب المخزن', sig: '— مشرف المختبر', text: 'رمز المخزن = ألوان العلب في الرفوف المعلّم عليها <b>✚ أحمر</b> في <b>الصيدلية الافتراضية</b>،<br><b>من الرقم الأصغر للأكبر</b>.' },
@@ -192,78 +193,146 @@ Object.assign(LEVEL_TIPS, {
   L2: ['إذا طفى النور: ثبّت الكشاف على وجهها لين يرجع النور.', 'وفّر البطارية، والبطاريات 🔋 متفرقة في المكاتب.', 'لا توقف وهي وراك.']
 });
 LEVELS.L0 = {
-  id: 'L0', order: 0, card: ['LEVEL 0', 'الدور الأرضي', 'كلية الصيدلة · جامعة القصيم'], surface: 'tile', vig: 1.0, sat: 0.95,
+  id: 'L0', order: 0, card: ['LEVEL 0', 'الدور الأرضي', '«الكويز ما خلص»'], surface: 'tile', vig: 1.15, sat: 0.8,
   build() {
     const G = collegeGrid(); World.grid = G;
-    const names = [{ name: 'قاعة ١٠١', kind: 'hall' }, { name: 'قاعة ١٠٢', kind: 'hall' }, { name: 'قاعة ١٠٣', kind: 'hall' }, { name: 'قاعة ١٠٤', kind: 'hall' }, { name: 'قاعة ١٠٥', kind: 'hall' }, { name: 'قاعة ١٠٦', kind: 'hall' }, { name: 'قاعة ١٠٧', kind: 'hall' }, { name: 'قاعة ١٠٨', kind: 'hall' }, { name: 'قاعة ١٠٩', kind: 'hall' }, { name: 'قاعة ١١٠', kind: 'hall' }, { name: 'قاعة ١١١', kind: 'hall' }, { name: 'قاعة ١١٢', kind: 'hall' }];
+    const names = ['١٠١', '١٠٢', '١٠٣', '١٠٤', '١٠٥', '١٠٦', '١٠٧', '١٠٨', '١٠٩', '١١٠', '١١١', '١١٢'].map(n => ({ name: 'قاعة ' + n, kind: 'hall' }));
     planFloor(G, 1, names);
-    setupEnv({ fog: 0x0e1014, fogD: 0.03, sky: 0xbfd0e8, ground: 0x2a2620, amb: 0.5, exposure: 1.05, bloom: 0.55, bloomT: 0.8, hum: 0.45, drone: 0.25, tint: [0.98, 1, 1.04], grain: 0.035 });
-    // doors (made before walls so the frames are built)
+    // sickly fluorescent yellow-white: the college at night, but wrong
+    setupEnv({ fog: 0x0d0c08, fogD: 0.034, sky: 0xd8cfa8, ground: 0x2a2416, amb: 0.42, exposure: 1.05, bloom: 0.6, bloomT: 0.78, hum: 1.0, drone: 0.32, tint: [1.06, 1.0, 0.8], grain: 0.05 });
     G.halls.forEach(r => { const ds = hallDoors(G, r); ds.forEach(d => doorSign(d, r.name, 'B4-' + r.name.replace(/[^\d٠-٩]/g, ''))); });
     G.offices.forEach((r, i) => { const d = officeDoor(G, r); doorSign(d, pick(['مكتب', 'مكتب أكاديمي', 'مكتب إداري']), (r.side === 'w' ? 'W' : 'E') + (i + 1)); });
-    const ed = addDoor(G, 1, 1, 2, 1, { tex: TEX.metalDoor, trim: 0x555, locked: true, key: 'eleckey', lockedMsg: 'غرفة الكهرباء مقفلة. المفتاح عند الاستقبال.' }); doorSign(ed, 'غرفة الكهرباء', '⚡', '#8a1a12');
+    const ed = addDoor(G, 1, 1, 2, 1, { tex: TEX.metalDoor, trim: 0x555, locked: true, key: 'eleckey', lockedMsg: 'غرفة الكهرباء مقفلة. المفتاح في درج مكتب الاستقبال (عند المدخل).' }); doorSign(ed, 'غرفة الكهرباء', '⚡', '#8a1a12');
     G.wc.forEach(r => { const d = addDoor(G, r.x0 === 3 ? 3 : 27, 1, r.x0 === 3 ? 2 : 28, 1, { tex: TEX.woodDoor, trim: 0x8a8f94 }); doorSign(d, 'دورة مياه', 'WC', '#1f4f6e'); });
-    const hsd = addDoor(G, 25, 1, 24, 1, { tex: TEX.glassDoor, trim: 0x9aa0a6, locked: true, lockedMsg: 'باب زجاج… وراه ممر كلية العلوم الطبية التطبيقية. مقفل.' }); doorSign(hsd, 'كلية العلوم الطبية التطبيقية', '←', '#1f4f6e');
+    const hsd = addDoor(G, 25, 1, 24, 1, { tex: TEX.glassDoor, trim: 0x9aa0a6, locked: true, lockedMsg: 'باب زجاج… وراه ممر العلوم الطبية التطبيقية. مقفل. وفيه أحد واقف ورا الزجاج؟' }); doorSign(hsd, 'العلوم الطبية التطبيقية', '←', '#1f4f6e');
     buildShell(G, { skylight: true });
-    // furnish
-    G.halls.forEach(r => lectureHall(G, r, r.name));
-    G.offices.forEach(r => officeRoom(G, r)); G.wc.forEach(r => restroom(G, r));
-    // lobby: reception desk, blue sofas, plants, banner, vending machines under the stairs
+    G.halls.forEach(r => lectureHall(G, r, r.name)); G.offices.forEach(r => officeRoom(G, r)); G.wc.forEach(r => restroom(G, r));
+    // the hall where you wake up
+    const home = G.halls[4], HW = roomW(home); Game.flags.home = home;
+    home.board.material.map = signTex({ w: 1024, h: 420, bg: '#f4f6f6', border: '#9aa0a6', bw: 14, age: true, lines: [{ t: 'كويز PHP 363', y: 100, s: 60, c: '#1a3a7a', f: 'Arial' }, { t: 'الكويز ما خلص', y: 230, s: 96, c: '#b10d0d' }, { t: 'ارجع لمقعدك', y: 350, s: 60, c: '#b10d0d' }] });
+    // lobby
     reception(16.6 * CS, 19.6 * CS, -Math.PI / 2);
     [[13.9, 6], [17.1, 6], [13.9, 12], [17.1, 12], [13.9, 18.5], [17.1, 18.5]].forEach(([x, y], i) => sofa(x * CS, y * CS, i % 2 ? -Math.PI / 2 : Math.PI / 2, 0x1d5c70));
     sofa(14.9 * CS, 3.9 * CS, Math.PI, 0x1d5c70); sofa(16.1 * CS, 3.9 * CS, Math.PI, 0x1d5c70);
     vending(17.6 * CS, 3.5 * CS, -Math.PI / 2); vending(17.6 * CS, 4.6 * CS, -Math.PI / 2);
     [[13.4, 4.2], [17.6, 20.6], [13.4, 20.6], [13.4, 13.6], [17.6, 13.6]].forEach(([x, y]) => plant(x * CS, y * CS));
     const logo = window.IMG_LOGO ? imgTex(window.IMG_LOGO) : null; if (logo) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.05), new THREE.MeshStandardMaterial({ map: logo, transparent: true, roughness: 0.6 })); pl.position.set(15.5 * CS, 3.1, 3 * CS + 0.25); World.group.add(pl); }
-    const ban = signTex({ w: 1024, h: 300, bg: '#ffffff', age: true, lines: [{ t: 'يوم حصاد مشاريع التخرج', y: 120, s: 78, c: '#0f5135' }, { t: 'GRADUATION PROJECTS DAY', y: 210, s: 48, c: '#1f4f6e', f: 'Arial' }] });
-    poster(ban, 15.5 * CS, 2.6, 21.9 * CS, Math.PI, 4.2, 1.2);
-    // graduation-day balloons in the lobby: pop one and he hears it
-    const balloons = []; for (let i = 0; i < 12; i++) balloons.push(balloon(rnd(13.6, 17.4) * CS, rnd(10, 20) * CS)); Game.flags.balloons = balloons;
+    Game.flags.banner = poster(signTex({ w: 1024, h: 300, bg: '#ffffff', age: true, lines: [{ t: 'يوم حصاد مشاريع التخرج', y: 120, s: 78, c: '#0f5135' }, { t: 'GRADUATION PROJECTS DAY', y: 210, s: 48, c: '#1f4f6e', f: 'Arial' }] }), 15.5 * CS, 2.75, 21.85 * CS, Math.PI, 4.2, 1.2);
+    // main entrance: glass doors that never lead outside
+    const ez = 23 * CS - 0.13; for (const dx of [-1.6, 0, 1.6]) { const gd = poster(TEX.glassDoor, 15.5 * CS + dx, 1.15, ez, Math.PI, 1.5, 2.3); gd.material.roughness = 0.15; }
+    const exitSign = poster(signTex({ w: 512, h: 128, bg: '#0d5a2a', lines: [{ t: 'مخرج  EXIT', y: 85, s: 60, c: '#fff' }] }), 15.5 * CS, 2.6, ez, Math.PI, 1.2, 0.3); exitSign.material.emissive = new THREE.Color(0x0d5a2a); exitSign.material.emissiveIntensity = 0.8;
+    addInteract({ pos: { x: 15.5 * CS, y: 1.2, z: ez }, r: 2.2, label: 'اطلع من الكلية', use: () => exitLoop() });
+    // graduation-day balloons: pop one and he comes running
+    const balloons = []; for (let i = 0; i < 10; i++) balloons.push(balloon(rnd(13.6, 17.4) * CS, rnd(10, 20) * CS)); for (const [x, y] of [[5, 8.5], [24, 15.6], [2.5, 12], [28.5, 5]]) balloons.push(balloon(x * CS + rnd(-1, 1), y * CS)); Game.flags.balloons = balloons;
     for (let i = 0; i < 9; i++) { const y = pick([8.5, 9.4, 15.4, 16.5]), x = pick([rnd(3.3, 12.5), rnd(18.5, 27.6)]); canOnFloor(x * CS, y * CS); }
-    fireAlarm(3 * CS + 0.12, 9.6 * CS, Math.PI / 2); fireAlarm(28 * CS - 0.12, 15.4 * CS, -Math.PI / 2);
-    // crawl holes in corridor walls (safe spots)
-    [[2, 5, 'w'], [2, 18, 'w'], [28, 6, 'e'], [28, 19, 'e'], [10, 9, 's'], [21, 15, 'n'], [6, 16, 's'], [24, 8, 'n']].forEach(([cx, cy, sd]) => { const sd2 = wallSide(G, cx, cy, sd); if (!sd2) return; const p = onWall(G, cx, cy, sd2, 0); addLockerHide(p.x + Math.sin(p.ry) * 0.25, p.z + Math.cos(p.ry) * 0.25, p.ry); });
-    // lights: patches of the building are dark
-    collegeLights(G, 0.42, 7, { keepLit: f => f.z > 17 * CS && Math.abs(f.x - 15.5 * CS) < 4 });
-    // the shutter + stairs
+    fireAlarmOn(G, 6, 8, 'n'); fireAlarmOn(G, 24, 16, 's'); fireAlarmOn(G, 28, 12, 'e');
+    [[2, 5, 'w'], [2, 18, 'w'], [28, 6, 'e'], [28, 19, 'e'], [10, 9, 's'], [21, 15, 'n'], [6, 16, 's'], [24, 8, 'n'], [13, 11, 'w'], [17, 17, 'e']].forEach(([cx, cy, sd]) => { const sd2 = wallSide(G, cx, cy, sd); if (!sd2) return; const p = onWall(G, cx, cy, sd2, 0); addLockerHide(p.x + Math.sin(p.ry) * 0.25, p.z + Math.cos(p.ry) * 0.25, p.ry); });
+    collegeLights(G, 0.45, 7, { color: 0xffe6a8, power: 3.4, keepLit: f => (f.z > 17 * CS && Math.abs(f.x - 15.5 * CS) < 4) || (f.x > HW.x0 && f.x < HW.x1 && f.z > HW.z0 && f.z < HW.z1) });
+    World.fixtures.forEach(f => { if (Math.random() < 0.25) f.flick = Math.max(f.flick, rnd(0.2, 0.5)); });
     const sh = mainStairs(G, { label: 'الدرج مقفل', sub: 'الكهرباء مفصولة', cond: () => Game.flags.power, onTop: () => noclipTo('L1') }); Game.flags.shutter = sh;
     sideStairsBlocked(G);
-    // objectives: key in the reception drawer, 3 fuses in random halls, coins in offices
-    addInteract({ pos: { x: 16.6 * CS, y: 1, z: 19.6 * CS }, r: 2.2, once: true, label: 'فتّش درج الاستقبال', use: () => { SFX.doorOpen(16.6 * CS, 19.6 * CS); Game.inv.eleckey = 1; Game.held = 'eleckey'; Game.updateInv(); UI.msg('لقيت <b>مفتاح غرفة الكهرباء</b> 🗝️', 2600); UI.objective('افتح غرفة الكهرباء', 'آخر الممر الغربي جنب الدرج · امسك المفتاح'); if (!Game.flags.spawned) later(() => l0Spawn(), 9000); } });
-    const fuseHalls = G.halls.slice().sort(() => Math.random() - 0.5).slice(0, 3);
-    fuseHalls.forEach(r => { const W = roomW(r); const d = World.hides.filter(h => h.type === 'table' && h.x > W.x0 && h.x < W.x1 && h.z > W.z0 && h.z < W.z1); const t = d.length ? pick(d) : { x: W.cx, z: W.cz }; pickupKind('fuse', t.x, t.z); });
+    // reception drawer → key
+    addInteract({ pos: { x: 16.6 * CS, y: 1, z: 19.6 * CS }, r: 2.2, once: true, label: 'فتّش درج الاستقبال', use: () => { SFX.doorOpen(16.6 * CS, 19.6 * CS); Game.inv.eleckey = 1; Game.held = 'eleckey'; Game.updateInv(); UI.msg('لقيت <b>مفتاح غرفة الكهرباء</b> 🗝️ … ومعه ورقة: «لا تلتفت»', 3200); objL0('fuses'); if (!Game.flags.spawned) later(() => l0Spawn(), 6000); } });
+    // fuses: one in each of 3 dark halls, sitting on a desk, glowing faintly
+    const fuseHalls = G.halls.filter(r => r !== home).sort(() => Math.random() - 0.5).slice(0, 3); Game.flags.fuseHalls = fuseHalls.map(r => r.name);
+    fuseHalls.forEach(r => { const W = roomW(r); const d = World.hides.filter(h => h.type === 'table' && h.x > W.x0 && h.x < W.x1 && h.z > W.z0 && h.z < W.z1); const t = d.length ? pick(d) : { x: W.cx, z: W.cz }; pickupKind('fuse', t.x, t.z); World.fixtures.forEach(f => { if (f.x > W.x0 && f.x < W.x1 && f.z > W.z0 && f.z < W.z1) { f.on = false; f.base = 0; } }); });
     G.offices.slice().sort(() => Math.random() - 0.5).slice(0, 3).forEach(r => { const W = roomW(r); pickupKind('coin', W.cx + (r.side === 'w' ? -0.4 : 0.4), W.cz); });
     G.offices.slice().sort(() => Math.random() - 0.5).slice(0, 4).forEach(r => { const W = roomW(r); pickupKind(pick(['battery', 'bottle', 'bottle', 'vitc']), W.cx + rnd(-0.4, 0.4), W.cz + 0.5, 0.78); });
-    pickupKind('redjuice', 16.6 * CS, 18.9 * CS, 1.15); // right on the reception desk, under the light
-    // fuse panel in the electrical room
+    pickupKind('bottle', HW.x0 + 1.5, HW.z0 + 1.2, 0.02);
+    pickupKind('redjuice', 16.6 * CS, 18.9 * CS, 1.15);
+    // fuse panel
     const ew = roomW(G.elec); const panel = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 0.15), stdMat({ color: 0x5a6066, metalness: 0.6 })); panel.position.set(ew.cx, 1.4, ew.z0 + 0.12); World.group.add(panel);
     const slots = [0, 1, 2].map(i => { const s = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.24, 0.05), new THREE.MeshStandardMaterial({ color: 0x222, emissive: 0x330000 })); s.position.set(ew.cx - 0.25 + i * 0.25, 1.4, ew.z0 + 0.22); World.group.add(s); return s; });
     Game.flags.fuses = 0;
     addInteract({ pos: { x: ew.cx, y: 1.4, z: ew.z0 + 0.4 }, r: 1.8, cond: () => !Game.flags.power, label: () => Game.inv.fuse ? 'ركّب الفيوز' : `لوحة الكهرباء (${ar(Game.flags.fuses)}/٣)`, use: () => {
-      if (!Game.inv.fuse) { SFX.locked(); UI.msg('تحتاج فيوز. الفيوزات في القاعات.', 2000); return; }
-      Game.inv.fuse--; if (!Game.inv.fuse) delete Game.inv.fuse; Game.updateInv(); slots[Game.flags.fuses].material.emissive.set(0x00aa33); Game.flags.fuses++; SFX.clank(ew.cx, ew.z0); Game.noise(ew.cx, ew.z0, 10);
-      if (Game.flags.fuses < 3) { UI.msg(`فيوز ${ar(Game.flags.fuses)}/٣`, 1800); UI.objective(`ركّب الفيوزات (${ar(Game.flags.fuses)}/٣)`, 'دوّر في القاعات المظلمة'); return; }
+      if (!Game.inv.fuse) { SFX.locked(); UI.msg('تحتاج فيوز. الفيوزات في القاعات المظلمة.', 2000); return; }
+      const n = Game.inv.fuse; for (let i = 0; i < n; i++) { slots[Game.flags.fuses].material.emissive.set(0x00aa33); Game.flags.fuses++; } delete Game.inv.fuse; Game.updateInv(); SFX.clank(ew.cx, ew.z0); Game.noise(ew.cx, ew.z0, 14);
+      if (Game.flags.fuses < 3) { UI.msg(`فيوز ${ar(Game.flags.fuses)}/٣ … اللوحة طنّت. أكيد سمعها.`, 2200); objL0('fuses'); return; }
       powerOn();
     } });
-    // spawn at the entrance, facing the long corridor
-    Player.pos.set(15.5 * CS, 0, 21.4 * CS); Player.yaw = 0;
-    noteOnWall(G, 16, 21, 'e', NOTES.F1, () => { if (!Game.flags.o0) { Game.flags.o0 = 1; UI.objective('فتّش مكتب الاستقبال', 'يمينك'); } });
-    graffiti(G, 2, 12, 'w', 'لا تركض… يسمعك', { color: 'rgba(130,12,8,0.8)' }); graffiti(G, 21, 9, 'n', '|||| |||| |||| ٣٦', { color: 'rgba(25,18,10,0.8)', size: 46 }); graffiti(G, 28, 4, 'e', 'العلوم الطبية مو مخرج');
+    // you fell asleep in his quiz. wake up at your desk.
+    const desks = World.hides.filter(h => h.type === 'table' && h.x > HW.x0 && h.x < HW.x1 && h.z > HW.z0 && h.z < HW.z1).sort((a, b) => a.z - b.z);
+    const myDesk = desks[0] || { x: HW.cx, z: HW.z0 + 3 }; Game.flags.myDesk = myDesk;
+    Player.pos.set(myDesk.x, 0, myDesk.z - 0.75); Player.yaw = Math.PI; Player.pitch = -1.1;
+    const paper = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.3), new THREE.MeshStandardMaterial({ color: 0xe9e0c8, side: THREE.DoubleSide })); paper.rotation.x = -Math.PI / 2; paper.rotation.z = 0.3; paper.position.set(myDesk.x + 0.15, 0.79, myDesk.z); World.group.add(paper);
+    World.interact.filter(o => o.label === 'ادخل تحت الطاولة' && Math.abs(o.pos.x - myDesk.x) < 0.01 && Math.abs(o.pos.z - myDesk.z) < 0.01).forEach(o => { const c0 = o.cond; o.cond = () => Game.flags.read && (!c0 || c0()); });
+    addInteract({ pos: { x: myDesk.x, y: 0.8, z: myDesk.z }, r: 1.7, cond: () => !Player.hidden, label: 'اقرأ الورقة اللي تحت يدك', use: () => openNote(Object.assign({}, NOTES.F1, { after: () => { if (!Game.flags.read) { Game.flags.read = 1; objL0('leave'); } } })) });
+    graffiti(G, 2, 12, 'w', 'لا تركض… يسمعك', { color: 'rgba(130,12,8,0.8)' }); graffiti(G, 21, 9, 'n', '|||| |||| |||| |||| |||| |||| |', { color: 'rgba(25,18,10,0.8)', size: 46 }); graffiti(G, 28, 4, 'e', 'الباب ما يطلع لبرا');
+    graffiti(G, 15, 21, 'w', 'ارجع لمقعدك', { color: 'rgba(130,12,8,0.75)' });
     loreNote(G, 0, 7, 'w', 'l0a'); loreNote(G, 30, 13, 'e', 'l0b');
-    const mj = new Monster('mujahid', { walk: 1.2, run: 4.85, sight: 18, sightDark: 5, doors: 'bang', catchR: 0.95 }); Game.monsters.push(mj); mj.place(-99, -99);
-    Game.flags.t0 = Game.t; World.batches = staticBatch();
+    const mj = new Monster('mujahid', { walk: 1.25, run: 4.85, sight: 18, sightDark: 5.5, doors: 'bang', catchR: 0.95 }); Game.monsters.push(mj); mj.place(-99, -99);
+    Game.flags.t0 = Game.t; Game.flags.loops = 0; World.batches = staticBatch();
+    R.P.dark.value = 1;
   },
   update(dt) {
-    const F = Game.flags, t = Game.t - F.t0;
-    if (!F.toast1 && t > 20) { F.toast1 = 1; SFX.phone(); UI.toast('د. مجاهد', 'وينك يا طالب؟ الكويز بدأ 🙂'); }
-    if (!F.spawned && t > 150) l0Spawn();
-    if (!F.bellT || Game.t > F.bellT) { F.bellT = Game.t + rnd(70, 110); if (t > 30) sample('sfx_bell', 15.5 * CS + rnd(-20, 20), 12 * CS, { vol: 0.5, rate: 0.85 }); }
-    if (F.spawned && !F.selfPop && Game.t - F.spawnT > 40 && Math.random() < dt * 0.02) { F.selfPop = 1; const b = (F.balloons || []).find(b => b.b.parent); if (b) { b.pop(); UI.msg('…بالونة فقعت لحالها؟', 2000); } }
-    if (F.hsKnock === undefined && Math.hypot(Player.pos.x - 24 * CS, Player.pos.z - 1.5 * CS) < 3) { F.hsKnock = 1; later(() => { SFX.knock(25.5 * CS, 1.5 * CS, 3); UI.msg('…أحد يطق من ورا الباب الزجاج', 2200); }, 800); }
+    const F = Game.flags, t = Game.t - F.t0, P = Player.pos, HW = roomW(F.home);
+    // waking up: eyes open, blink, head lifts off the desk
+    if (t < 4.5) { const k = clamp(t / 4.5, 0, 1); R.P.dark.value = Math.max(0, 1 - k * 1.3 + (t > 1.6 && t < 1.9 ? 0.8 : 0) + (t > 2.5 && t < 2.65 ? 0.6 : 0)); if (t < 3.5) Player.pitch = lerp(-1.1, -0.15, clamp((t - 1.2) / 2.2, 0, 1)); if (!F.wake) { F.wake = 1; muffle(true); later(() => muffle(false), 3500); later(() => { UI.msg('…صحيت. القاعة فاضية. والساعة ٣ الفجر.', 3400); }, 1800); later(() => { if (!F.read) objL0('read'); }, 5000); } }
+    else if (R.P.dark.value) R.P.dark.value = 0;
+    const inHome = P.x > HW.x0 && P.x < HW.x1 && P.z > HW.z0 && P.z < HW.z1;
+    if (!inHome && !F.left) { F.left = 1; F.leftT = Game.t; if (!F.read) F.read = 1; objL0('reception'); }
+    // the first sighting: he is standing at the far end of whatever corridor you look down
+    if (F.left && !F.sighted) { if (Game.t - F.leftT > 1.5) trySighting(); if (Game.t - F.leftT > 45) { F.sighted = 1; l0Spawn(); } }
+    if (!F.spawned && t > 170) l0Spawn();
+    if (F.spawned && !F.selfPop && Game.t - F.spawnT > 50 && Math.random() < dt * 0.015) { F.selfPop = 1; const b = (F.balloons || []).find(b => b.b.parent && Math.hypot(b.b.position.x - P.x, b.b.position.z - P.z) > 12); if (b) { b.pop(); UI.msg('…بالونة فقعت لحالها. وهو رايح لها.', 2400); } }
+    const nf = Game.inv.fuse | 0; if (nf !== (F.lastFuse | 0)) { F.lastFuse = nf; objL0('fuses'); }
+    if (F.hsKnock === undefined && Math.hypot(P.x - 24 * CS, P.z - 1.5 * CS) < 3) { F.hsKnock = 1; later(() => { SFX.knock(25.5 * CS, 1.5 * CS, 3); UI.msg('…أحد يطق من ورا الباب الزجاج', 2200); }, 800); }
   },
-  respawn() { respawnFloor(() => { const F = Game.flags; if (F.power) { Player.pos.set(15.5 * CS, 0, 6 * CS); Player.yaw = 0; } else { Player.pos.set(15.5 * CS, 0, 21.4 * CS); Player.yaw = 0; } }); }
+  respawn() { respawnFloor(() => { const F = Game.flags; if (F.power) { Player.pos.set(15.5 * CS, 0, 6 * CS); Player.yaw = 0; } else { const d = F.myDesk; Player.pos.set(d.x, 0, d.z - 0.75); Player.yaw = Math.PI; } }); }
 };
-function l0Spawn() { const F = Game.flags; if (F.spawned) return; F.spawned = true; F.spawnT = Game.t; knockSpawn(Game.monsters[0], 'm1'); UI.msg('…<b>طق طق طق</b>', 2200); }
+function objL0(step) {
+  const F = Game.flags;
+  const T = { read: ['اقرأ الورقة اللي على طاولتك', 'اضغط ' + keyLabel(Input.binds.use)], leave: ['اطلع من القاعة', 'الباب ورا ظهرك'], reception: ['روح لمكتب الاستقبال', 'عند المدخل · آخر الممر الرئيسي'],
+    fuses: [`لقّ الفيوزات (${ar((F.fuses || 0) + (Game.inv.fuse | 0))}/٣) وركّبها`, F.fuses ? 'غرفة الكهرباء · آخر الممر الغربي جنب الدرج الجانبي' : 'في القاعات المظلمة… ثم غرفة الكهرباء'] }[step];
+  if (T) UI.objective(T[0], T[1]);
+}
+/* look down a corridor… and he is standing there. then the light dies and he's gone */
+function trySighting() {
+  const F = Game.flags, G = World.grid, P = Player.pos, fx = -Math.sin(Player.yaw), fz = -Math.cos(Player.yaw);
+  if (Math.abs(Player.pitch) > 0.5) return false;
+  // walk along the view ray: he stands at the farthest point you can still see, 12–30 m away
+  let best = null; for (let d = 6; d <= 15.5; d += 0.8) { const x = P.x + fx * d, z = P.z + fz * d, [cx, cy] = G.cell(x, z); if (!G.inside(cx, cy) || !G.floor[cy * G.W + cx] || !losCheck(P.x, P.z, x, z)) break; if (d >= 8) best = [x, z]; }
+  if (!best) return false;
+  F.sighted = 1; const m = Game.monsters[0]; m.place(best[0], best[1], Math.atan2(P.x - best[0], P.z - best[1])); m.root.visible = true; m.speed = 0; finishSighting(m, best[0], best[1]); return true;
+}
+function finishSighting(m, wx, wz) {
+  const L = new THREE.SpotLight(0xffe6a8, 9, 9, 0.6, 0.5, 1.4); L.position.set(wx, CWH - 0.1, wz); L.target.position.set(wx, 0, wz); World.group.add(L, L.target);
+  let on = true; const fl = setInterval(() => { if (!L.parent) return clearInterval(fl); on = Math.random() > 0.18; L.intensity = on ? rnd(7, 10) : 0.5; }, 90);
+  later(() => { clearInterval(fl); World.group.remove(L, L.target); }, 2600);
+  const near = World.fixtures.filter(f => Math.hypot(f.x - wx, f.z - wz) < 7); near.forEach(f => { f.base = 1; f.flick = 0.6; }); World.blackoutChanged = true;
+  setBed('hum', 0.15, 0.3); setBed('drone', 0.05, 0.3); // the building holds its breath
+  later(() => { SFX.mbreath && SFX.mbreath(wx, wz, 'mujahid', false); }, 900);
+  later(() => { near.forEach(f => { f.base = 0; f.flick = 0; }); World.blackoutChanged = true; SFX.bulbPop(wx, wz); sample('sfx_sting', 0, 0, { flat: true, vol: 0.9 }); Game.shake(0.3); m.root.visible = false; m.place(-99, -99); setBed('hum', 1.0, 2); setBed('drone', 0.4, 2); }, 2600);
+  later(() => { UI.msg('…كان واقف هناك. د. مجاهد.', 2600); }, 3200);
+  later(() => l0Spawn(), 16000);
+}
+/* the main door never leads outside: it brings you back to your seat, and the building changes a little each time */
+function exitLoop() {
+  const F = Game.flags; if (F.looping) return; F.looping = 1; SFX.doorOpen(15.5 * CS, 22.5 * CS); Player.frozen = true;
+  let k = 0; const fade = setInterval(() => { k += 0.08; R.P.dark.value = Math.min(1, k); if (k >= 1) clearInterval(fade); }, 30);
+  later(() => {
+    F.loops++; const d = F.myDesk; Player.pos.set(d.x, 0, d.z - 0.75); Player.yaw = Math.PI; Player.pitch = -0.5; Player.vel.set(0, 0, 0); Player.frozen = false; F.looping = 0;
+    let j = 1; const un = setInterval(() => { j -= 0.06; R.P.dark.value = Math.max(0, j); if (j <= 0) clearInterval(un); }, 30);
+    sample('sfx_whisp', 0, 0, { flat: true, vol: 0.7 }); Game.glitch = 0.6;
+    const n = F.loops;
+    UI.msg(['…رجعت لمقعدك؟', '…مرة ثانية. نفس المقعد.', 'الباب ما يطلع لبرا. الدرج هو الطريق الوحيد.'][Math.min(n - 1, 2)], 3200);
+    F.home.board.material.map = signTex({ w: 1024, h: 420, bg: '#f4f6f6', border: '#9aa0a6', bw: 14, age: true, lines: [{ t: 'محاولة رقم ' + ar(36 + n), y: 110, s: 64, c: '#1a3a7a' }, { t: 'الكويز ما خلص', y: 240, s: 96, c: '#b10d0d' }, { t: '|'.repeat(36 + n), y: 350, s: 40, c: '#b10d0d', f: 'Arial' }] });
+    if (n === 1) (F.balloons || []).forEach(b => b.b.parent && b.b.material.color.set(0x1a1a1a));
+    if (n === 2) F.banner.material.map = signTex({ w: 1024, h: 300, bg: '#ffffff', age: true, lines: [{ t: 'يوم حصاد الطلاب', y: 140, s: 90, c: '#8a0d0d' }, { t: 'ارجع لمقعدك', y: 240, s: 56, c: '#8a0d0d' }] });
+    if (n >= 2 && !F.spawned) l0Spawn();
+    objL0(F.fuses || Game.inv.eleckey ? 'fuses' : 'reception');
+  }, 1100);
+}
+function l0Spawn() { const F = Game.flags; if (F.spawned) return; F.spawned = true; F.spawnT = Game.t; knockSpawn(Game.monsters[0], 'm1'); UI.msg('…<b>طق. طق. طق.</b>', 2200); }
+/* loud noises pull the doctor, at a run, wherever he is (and wake him if he hasn't come out yet) */
+function alertDoctors(x, z, line = true) {
+  Game.monsters.forEach(m => {
+    if (m.state === 'lure' || m.state === 'dark' || m.state === 'chase') return;
+    if (m.state === 'off') { if (Game.level.id === 'L0') { Game.flags.spawned = true; Game.flags.spawnT = Game.t; Game.flags.sighted = 1; } const G = World.grid; let best = null; for (let i = 0; i < 150 && !best; i++) { const cx = (Math.random() * G.W) | 0, cy = (Math.random() * G.H) | 0; if (!G.floor[cy * G.W + cx] || G.void?.[cy * G.W + cx]) continue; const wx = G.cx(cx), wz = G.cz(cy), d = Math.hypot(wx - x, wz - z), dp = Math.hypot(wx - Player.pos.x, wz - Player.pos.z); if (d > 14 && d < 34 && dp > 12 && !losCheck(wx, wz, Player.pos.x, Player.pos.z)) best = [wx, wz]; } if (!best) return; m.place(best[0], best[1]); m.activate('wander'); }
+    m.state = 'investigate'; m.target = { x, z }; const G = World.grid, [sx, sy] = G.cell(m.pos.x, m.pos.z), [tx, ty] = G.cell(x, z); m.path = bfsPath(G, sx, sy, tx, ty, m.doors !== 'none') || []; m.repath = 0; m.alertT = Game.t + 14; m.lastSeenPos = { x, z };
+    if (line) later(() => { const L = VOICE_LINES[m.type].noise; voice(L ? pick(L) : VOICE_LINES[m.type].taunt1, m.pos.x, m.pos.z, { force: true }); SFX.mstep(m.pos.x, m.pos.z, true, true); }, 700);
+  });
+}
 function powerOn() {
   const F = Game.flags; F.power = true; SFX.success(); SFX.rumble(2.5); Game.shake(0.5);
   UI.msg('⚡ رجعت الكهرباء', 2200);
@@ -315,7 +384,7 @@ LEVELS.L1 = {
     G.offices.forEach(r => { if (r.side === 'w') officeRoom(G, r); }); restroom(G, G.wc[0]);
     [[2, 6, 'w'], [2, 19, 'w'], [9, 9, 's'], [5, 16, 's'], [13, 4, 'w'], [17, 20, 'e']].forEach(([cx, cy, sd]) => { const sd2 = wallSide(G, cx, cy, sd); if (!sd2) return; const p = onWall(G, cx, cy, sd2, 0); addLockerHide(p.x + Math.sin(p.ry) * 0.25, p.z + Math.cos(p.ry) * 0.25, p.ry); });
     for (let i = 0; i < 7; i++) canOnFloor(pick([rnd(3.3, 12.5), rnd(13.3, 13.8), rnd(17.2, 17.8)]) * CS, pick([8.5, 9.4, 15.4, 16.5, rnd(4, 20)]) * CS);
-    fireAlarm(3 * CS + 0.12, 15.6 * CS, Math.PI / 2);
+    fireAlarmOn(G, 2, 13, 'w');
     collegeLights(G, 0.5, 11, { power: 3.2 });
     // the gate to the third floor: 4-key panel
     const sh = mainStairs(G, { label: 'بوابة الدور الثالث', sub: '٤ مفاتيح · لفها خلال ٥ ثواني', cond: () => Game.flags.gateOpen, onTop: () => noclipTo('L2') }); Game.flags.shutter = sh;
@@ -361,8 +430,8 @@ function labRoom(G, r) {
   const W = roomW(r); const bench = stdMat({ color: 0xd8dcdc, roughness: 0.4 }), cab = stdMat({ color: 0x1f3f5a, roughness: 0.5 });
   for (let i = 0; i < 2; i++) { const z = W.z0 + 2.6 + i * 3.6; prop(new THREE.BoxGeometry(W.x1 - W.x0 - 3, 0.9, 1.1), cab, W.cx, 0.45, z, 0, true); prop(new THREE.BoxGeometry(W.x1 - W.x0 - 2.9, 0.05, 1.2), bench, W.cx, 0.93, z, 0, false);
     for (let k = 0; k < 8; k++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, rnd(0.15, 0.3), 10), new THREE.MeshStandardMaterial({ color: pick([0x9fd8c8, 0xd8c89f, 0xc89fd8, 0xffffff]), transparent: true, opacity: 0.6, roughness: 0.05 })); b.position.set(W.x0 + 2 + k * 1.2, 1.05, z + rnd(-0.3, 0.3)); World.group.add(b); } }
-  whiteboard(W.cx, W.z0 + 0.12, 0, 3.4, [{ t: r.name, y: 110, s: 60, c: '#1a3a7a' }, { t: 'Safety first · Goggles ON', y: 230, s: 46, c: '#b11', f: 'Arial' }]);
-  const hood = prop(new THREE.BoxGeometry(1.6, 2.2, 0.8), stdMat({ color: 0xc8ccd0, metalness: 0.3 }), W.x1 - 1.1, 1.1, W.z0 + 0.5, 0, true);
+  const bN = r.y1 === 7; whiteboard(W.cx, bN ? W.z0 + 0.12 : W.z1 - 0.12, bN ? 0 : Math.PI, 3.4, [{ t: r.name, y: 110, s: 60, c: '#1a3a7a' }, { t: 'Safety first · Goggles ON', y: 230, s: 46, c: '#b11', f: 'Arial' }]);
+  const hood = prop(new THREE.BoxGeometry(1.6, 2.2, 0.8), stdMat({ color: 0xc8ccd0, metalness: 0.3 }), W.x1 - 1.1, 1.1, bN ? W.z0 + 0.5 : W.z1 - 0.5, 0, true);
 }
 function girlsRoomTease(G, r) { /* never entered: just light leaking under the door */ const W = roomW(r); const l = new THREE.PointLight(0xffd8e8, 0.35, 5); l.position.set(W.cx, 1.2, W.cz); World.group.add(l); }
 function virtualPharmacy(G, r) {
