@@ -201,7 +201,7 @@ class Monster {
   activate(state = 'wander') { this.state = state; this.root.visible = true; this.path = []; this.target = null; }
   deactivate() { this.state = 'off'; this.root.visible = false; Game.chase = 0; }
   canSee() {
-    if (Player.hidden && !Player.peek) return false;
+    if ((Player.hidden && !Player.peek) || Player.inHole) return false;
     const P = Player.pos, dx = P.x - this.pos.x, dz = P.z - this.pos.z, d = Math.hypot(dx, dz);
     const lit = Player.inLight() || Player.light;
     let range = lit ? this.sight : this.sightDark; if (Player.crouch > 0.5 && !lit) range *= 0.7; if (Game.chase > 0.5) range *= 1.6;
@@ -243,7 +243,7 @@ class Monster {
     // mumbling to himself: you can hear him coming before you see him
     if (this.state !== 'chase' && d < 18 && Game.t > (this.idleT || 0)) { this.idleT = Game.t + rnd(7, 12); const L = VOICE_LINES[this.type].idle; if (L) voice(pick(L), this.pos.x, this.pos.z, { vol: 0.9 }); }
     // catch
-    if (d < this.catchR && ((!Player.hidden && !Player.hiddenUnderTable) || this.sawHide) && Game.state === 'play' && !Player.safe) { Game.die(this, this.sawHide ? 'شافك وأنت تتخبى. اكسر خط النظر أول (لف زاوية أو سكّر باب) وبعدين تخبى.' : undefined); return; }
+    if (d < this.catchR && !Player.inHole && ((!Player.hidden && !Player.hiddenUnderTable) || this.sawHide) && Game.state === 'play' && !Player.safe) { Game.die(this, this.sawHide ? 'شافك وأنت تتخبى. اكسر خط النظر أول (لف زاوية أو سكّر باب) وبعدين تخبى.' : undefined); return; }
     const spd = this.state === 'chase' ? this.run : this.state === 'investigate' ? this.walk * 1.7 : this.walk;
     if (this.state === 'chase' && sees && d < 3.2 && !this.bang) { this.path = [[P.x, P.z]]; this.repath = 0.25; }
     this.followPath(dt, spd);

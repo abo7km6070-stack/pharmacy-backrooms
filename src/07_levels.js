@@ -121,15 +121,25 @@ function lockerMesh(x, z, ry, color = 0x6c7a80) {
   const fx = Math.sin(ry), fz = Math.cos(ry);
   return { mesh: g, x, z, front: { x: x + fx * 0.75, z: z + fz * 0.75 }, yaw: Math.atan2(fx, fz) + Math.PI };
 }
-function addLockerHide(x, z, ry, color) {
-  const L = lockerMesh(x, z, ry, color);
-  const spot = { type: 'locker', x: L.x, z: L.z, yaw: Math.atan2(-Math.sin(ry), -Math.cos(ry)) + Math.PI, out: L.front };
-  // camera inside looks outward through slats: player yaw such that forward = locker front
-  spot.yaw = Math.atan2(-Math.sin(ry), -Math.cos(ry)); spot.yaw = ry; // camera forward = (-sin yaw,-cos yaw) → need = (sin ry, cos ry) → yaw = ry+π
-  spot.yaw = ry + Math.PI;
-  World.hides.push(spot);
-  addInteract({ pos: { x: L.front.x, y: 1.2, z: L.front.z }, r: 1.6, label: 'اختبئ في الخزانة', use: () => hideIn(spot) });
-  return L;
+function addLockerHide(x, z, ry) { // a low crawl-hole in the wall: crouch and crawl in, no doctor can follow you
+  const nx = Math.sin(ry), nz = Math.cos(ry), wx = x - nx * 0.25, wz = z - nz * 0.25;
+  const D = 1.05, Wd = 1.15, Hh = 1.02, cx = wx + nx * D / 2, cz = wz + nz * D / 2;
+  const g = new THREE.Group(); g.position.set(cx, 0, cz); g.rotation.y = ry; World.group.add(g);
+  const shell = stdMat({ map: TEX.concrete, color: 0x9a9284, roughness: 0.95 }), dark = new THREE.MeshBasicMaterial({ color: 0x030202 });
+  const side = new THREE.BoxGeometry(0.12, Hh + 0.16, D); for (const sd of [-1, 1]) { const m = new THREE.Mesh(side, shell); m.position.set(sd * (Wd / 2 + 0.06), (Hh + 0.16) / 2, 0); g.add(m); }
+  const top = new THREE.Mesh(new THREE.BoxGeometry(Wd + 0.24, 0.16, D), shell); top.position.y = Hh + 0.08; g.add(top);
+  const inner = new THREE.Mesh(new THREE.PlaneGeometry(Wd, Hh), dark); inner.position.set(0, Hh / 2, -D / 2 + 0.03); g.add(inner);
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(Wd, D), dark); ceil.rotation.x = Math.PI / 2; ceil.position.y = Hh - 0.01; g.add(ceil);
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(Wd + 0.24, 0.05, 0.06), stdMat({ color: 0x3a3630, metalness: 0.5 })); lip.position.set(0, Hh + 0.02, D / 2); g.add(lip);
+  const ex = Math.abs(nx) > 0.5 ? D / 2 : Wd / 2 + 0.12, ez = Math.abs(nx) > 0.5 ? Wd / 2 + 0.12 : D / 2;
+  // side walls (full height) + the low roof: standing up you bump your head, crouched you slide in
+  if (Math.abs(nx) > 0.5) { addBoxCollider(cx - ex, cz - ez, cx + ex, cz - ez + 0.12, -1, 3); addBoxCollider(cx - ex, cz + ez - 0.12, cx + ex, cz + ez, -1, 3); }
+  else { addBoxCollider(cx - ex, cz - ez, cx - ex + 0.12, cz + ez, -1, 3); addBoxCollider(cx + ex - 0.12, cz - ez, cx + ex, cz + ez, -1, 3); }
+  addBoxCollider(cx - ex, cz - ez, cx + ex, cz + ez, Hh + 0.04, Hh + 0.3);
+  const H = { type: 'hole', x: cx, z: cz, hw: Math.abs(nx) > 0.5 ? D / 2 - 0.05 : Wd / 2 - 0.05, hd: Math.abs(nx) > 0.5 ? Wd / 2 - 0.05 : D / 2 - 0.05 };
+  World.hides.push(H);
+  addTrigger({ x: cx + nx * (D / 2 + 0.5), z: cz + nz * (D / 2 + 0.5), w: 0.9, d: 0.9, repeat: true, cond: () => !Game.flags.holeHint, fire: () => { Game.flags.holeHint = 1; UI.msg(`فتحة في الجدار… انحنِ (<b>${keyLabel(Input.binds.crouch)}</b>) وادخل فيها. ما أحد يقدر يلحقك جوّا.`, 3600); } });
+  return { mesh: g, x: cx, z: cz, front: { x: cx + nx * (D / 2 + 0.6), z: cz + nz * (D / 2 + 0.6) } };
 }
 function deskMesh(x, z, ry = 0) {
   const g = new THREE.Group(); const top = stdMat({ color: 0xb79a6a, roughness: 0.55 }), leg = stdMat({ color: 0x303236, metalness: 0.7, roughness: 0.4 });

@@ -3333,7 +3333,7 @@ class Monster {
   activate(state = 'wander') { this.state = state; this.root.visible = true; this.path = []; this.target = null; }
   deactivate() { this.state = 'off'; this.root.visible = false; Game.chase = 0; }
   canSee() {
-    if (Player.hidden && !Player.peek) return false;
+    if ((Player.hidden && !Player.peek) || Player.inHole) return false;
     const P = Player.pos, dx = P.x - this.pos.x, dz = P.z - this.pos.z, d = Math.hypot(dx, dz);
     const lit = Player.inLight() || Player.light;
     let range = lit ? this.sight : this.sightDark; if (Player.crouch > 0.5 && !lit) range *= 0.7; if (Game.chase > 0.5) range *= 1.6;
@@ -3375,7 +3375,7 @@ class Monster {
     // mumbling to himself: you can hear him coming before you see him
     if (this.state !== 'chase' && d < 18 && Game.t > (this.idleT || 0)) { this.idleT = Game.t + rnd(7, 12); const L = VOICE_LINES[this.type].idle; if (L) voice(pick(L), this.pos.x, this.pos.z, { vol: 0.9 }); }
     // catch
-    if (d < this.catchR && ((!Player.hidden && !Player.hiddenUnderTable) || this.sawHide) && Game.state === 'play' && !Player.safe) { Game.die(this, this.sawHide ? 'شافك وأنت تتخبى. اكسر خط النظر أول (لف زاوية أو سكّر باب) وبعدين تخبى.' : undefined); return; }
+    if (d < this.catchR && !Player.inHole && ((!Player.hidden && !Player.hiddenUnderTable) || this.sawHide) && Game.state === 'play' && !Player.safe) { Game.die(this, this.sawHide ? 'شافك وأنت تتخبى. اكسر خط النظر أول (لف زاوية أو سكّر باب) وبعدين تخبى.' : undefined); return; }
     const spd = this.state === 'chase' ? this.run : this.state === 'investigate' ? this.walk * 1.7 : this.walk;
     if (this.state === 'chase' && sees && d < 3.2 && !this.bang) { this.path = [[P.x, P.z]]; this.repath = 0.25; }
     this.followPath(dt, spd);
@@ -3595,7 +3595,7 @@ Game.die = function (mon, reason) {
   setTimeout(() => { this.state = 'dead'; UI.show('dead', true); setTimeout(() => $('retryBtn').focus(), 50); }, mon ? 1900 : 1200);
 };
 function respawn() {
-  UI.show('dead', false); Game.state = 'play'; Game.scare = null; R.P.glitch.value = 0; Game.glitch = 0; Player.pos.y = 0; Player.vy = 0; Player.onGround = true; Player.pitch = 0; Player.light = false;
+  UI.show('dead', false); Game.state = 'play'; Player.sanity = Math.max(Player.sanity, 0.75); Player.battery = Math.max(Player.battery, 0.6); Player.boostT = 0; Game.scare = null; R.P.glitch.value = 0; Game.glitch = 0; Player.pos.y = 0; Player.vy = 0; Player.onGround = true; Player.pitch = 0; Player.light = false;
   const L = Game.level; Player.hidden = false; $('slats').classList.remove('on'); muffle(false);
   Game.monsters.forEach(m => { m.doc.horror = false; m.doc.faceM.emissiveIntensity = 0; });
   if (L.respawn) L.respawn(); else startLevel(L.id);
@@ -3648,7 +3648,7 @@ function updatePlayer(dt) {
   const mag = Math.min(1, Math.hypot(f, s));
   const crouchWant = down('crouch') || I.tCrouch;
   // can't stand up under a table
-  let ceilingLow = false; for (const h of World.hides) if (h.type === 'table' && Math.abs(P.pos.x - h.x) < h.hw && Math.abs(P.pos.z - h.z) < h.hd) ceilingLow = true; P.under = ceilingLow;
+  let ceilingLow = false; for (const h of World.hides) if ((h.type === 'table' || h.type === 'hole') && Math.abs(P.pos.x - h.x) < h.hw && Math.abs(P.pos.z - h.z) < h.hd) ceilingLow = true; P.under = ceilingLow;
   P.crouch = lerp(P.crouch, crouchWant || ceilingLow ? 1 : 0, dt * 9);
   const chasing = Game.chase > 0.6;
   const wantRun = (down('run') || I.tRun) && mag > 0.3 && P.crouch < 0.5;
@@ -3680,8 +3680,11 @@ function updatePlayer(dt) {
     if (P.stepAcc > stride) { P.stepAcc = 0; SFX.step(Game.level.surfaceAt ? Game.level.surfaceAt(P.pos) : Game.level.surface, run, P.crouch > 0.5); if (run) Game.noise(P.pos.x, P.pos.z, 13); else if (P.crouch < 0.5) Game.noise(P.pos.x, P.pos.z, 3.2); }
   }
   P.bobAmp = lerp(P.bobAmp || 0, P.onGround ? Math.min(1, sp / 3) : 0, 1 - Math.exp(-6 * dt)); P.bob = Math.sin(P.bobPh) * P.bobAmp;
-  const wasUnder = P.hiddenUnderTable; P.hiddenUnderTable = false;
+  const wasUnder = P.hiddenUnderTable, wasHole = P.inHole; P.hiddenUnderTable = false; P.inHole = false;
   for (const h of World.hides) if (h.type === 'table' && P.crouch > 0.7 && Math.abs(P.pos.x - h.x) < h.hw - 0.05 && Math.abs(P.pos.z - h.z) < h.hd - 0.05) P.hiddenUnderTable = true;
+  for (const h of World.hides) if (h.type === 'hole' && Math.abs(P.pos.x - h.x) < h.hw && Math.abs(P.pos.z - h.z) < h.hd) P.inHole = true;
+  if (P.inHole && !wasHole) { for (const m of Game.monsters) { m.sawHide = false; if (m.state === 'chase') { m.state = 'search'; m.searchT = Game.t + rnd(6, 9); m.goto(P.pos.x + rnd(-2, 2), P.pos.z + rnd(-2, 2)); } } muffle(true); SFX.step('concrete', false, true); }
+  if (!P.inHole && wasHole) muffle(false);
   if (P.hiddenUnderTable && !wasUnder) Game.onHide();
   updateSurvival(dt);
 }
@@ -3722,7 +3725,7 @@ function updateTransition(dt) {
 }
 function hudFrame() {
   const P = Player; $('stamF').style.width = (P.stamina * 100) + '%'; $('stam').classList.toggle('on', P.stamina < 0.98); $('stam').classList.toggle('ex', P.exhausted);
-  $('hidden').classList.toggle('on', !!P.hidden || P.hiddenUnderTable); $('batF').style.width = (P.battery * 100) + '%'; $('bat').classList.toggle('low', P.battery < 0.2); $('sanF').style.width = (P.sanity * 100) + '%'; $('san').classList.toggle('low', P.sanity < 0.3); $('undert').classList.toggle('on', (P.hidden && P.hidden.type === 'table') || P.hiddenUnderTable);
+  $('hidden').classList.toggle('on', !!P.hidden || P.hiddenUnderTable || P.inHole); $('batF').style.width = (P.battery * 100) + '%'; $('bat').classList.toggle('low', P.battery < 0.2); $('sanF').style.width = (P.sanity * 100) + '%'; $('san').classList.toggle('low', P.sanity < 0.3); $('undert').classList.toggle('on', (P.hidden && P.hidden.type === 'table') || P.hiddenUnderTable || P.inHole);
 }
 /* ---------------- key handling ---------------- */
 Game.onKey = function (code) {
@@ -3779,7 +3782,7 @@ function updateSurvival(dt) {
   if (P.light && !P.hidden) { P.battery = Math.max(0, P.battery - dt / 95); if (P.battery <= 0) { P.light = false; SFX.click(); UI.msg('البطارية خلصت 🔋', 2000); } }
   // sanity: darkness and doctors wear you down, light and hiding with the door shut calm you
   const lit = P.inLight(), near = Game.stress;
-  let ds = 0; if (!lit && !P.light) ds -= dt / 150; if (near > 0.3) ds -= dt * near / 55; if (lit) ds += dt / 260;
+  let ds = 0; if (!lit && !P.light) ds -= dt / 330; if (near > 0.3) ds -= dt * near / 120; if (lit || P.light) ds += dt / 220; if (P.inHole) ds += dt / 90;
   if (Game.level && Game.level.id === 'END') ds = dt;
   P.sanity = clamp(P.sanity + ds, 0, 1);
   R.P.wobble.value = Math.max(R.P.wobble.value * 0.95, P.sanity < 0.3 ? (0.3 - P.sanity) * 2.2 : 0);
@@ -3793,7 +3796,7 @@ function hallucinate() {
   else if (r < 0.8) { const d = Game.monsters[0]; if (d && d.state === 'off') return; const L = VOICE_LINES[d ? d.type : 'mujahid']; voice(pick(L.idle || [L.taunt1]), P.pos.x + Math.sin(a) * 3, P.pos.z + Math.cos(a) * 3, { force: true, rate: 0.8 }); }
   else { // a phantom doctor at the far end of your view that vanishes when you get close or blink
     const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); const x = P.pos.x + fx * 9, z = P.pos.z + fz * 9; if (!losCheck(P.pos.x, P.pos.z, x, z)) return;
-    const ph = makeDoctor(pick(['mujahid', 'minhaj', 'amal'])); ph.root.position.set(x, 0, z); ph.root.rotation.y = Math.atan2(-fx, -fz); ph.horror = true; ph.faceM.emissiveIntensity = 2; World.group.add(ph.root);
+    const ph = makeDoctor((Game.monsters[0] && Game.monsters[0].type) || 'mujahid'); ph.root.position.set(x, 0, z); ph.root.rotation.y = Math.atan2(-fx, -fz); ph.horror = true; ph.faceM.emissiveIntensity = 2; World.group.add(ph.root);
     let t = 0; World.updaters.push(function f(dt) { t += dt; const d = Math.hypot(P.pos.x - x, P.pos.z - z); if (t > 1.6 || d < 5) { World.group.remove(ph.root); SFX.stinger(); Game.glitch = 0.5; later(() => Game.glitch = 0, 250); const i = World.updaters.indexOf(f); if (i >= 0) World.updaters.splice(i, 1); } });
   }
 }
@@ -3921,15 +3924,25 @@ function lockerMesh(x, z, ry, color = 0x6c7a80) {
   const fx = Math.sin(ry), fz = Math.cos(ry);
   return { mesh: g, x, z, front: { x: x + fx * 0.75, z: z + fz * 0.75 }, yaw: Math.atan2(fx, fz) + Math.PI };
 }
-function addLockerHide(x, z, ry, color) {
-  const L = lockerMesh(x, z, ry, color);
-  const spot = { type: 'locker', x: L.x, z: L.z, yaw: Math.atan2(-Math.sin(ry), -Math.cos(ry)) + Math.PI, out: L.front };
-  // camera inside looks outward through slats: player yaw such that forward = locker front
-  spot.yaw = Math.atan2(-Math.sin(ry), -Math.cos(ry)); spot.yaw = ry; // camera forward = (-sin yaw,-cos yaw) → need = (sin ry, cos ry) → yaw = ry+π
-  spot.yaw = ry + Math.PI;
-  World.hides.push(spot);
-  addInteract({ pos: { x: L.front.x, y: 1.2, z: L.front.z }, r: 1.6, label: 'اختبئ في الخزانة', use: () => hideIn(spot) });
-  return L;
+function addLockerHide(x, z, ry) { // a low crawl-hole in the wall: crouch and crawl in, no doctor can follow you
+  const nx = Math.sin(ry), nz = Math.cos(ry), wx = x - nx * 0.25, wz = z - nz * 0.25;
+  const D = 1.05, Wd = 1.15, Hh = 1.02, cx = wx + nx * D / 2, cz = wz + nz * D / 2;
+  const g = new THREE.Group(); g.position.set(cx, 0, cz); g.rotation.y = ry; World.group.add(g);
+  const shell = stdMat({ map: TEX.concrete, color: 0x9a9284, roughness: 0.95 }), dark = new THREE.MeshBasicMaterial({ color: 0x030202 });
+  const side = new THREE.BoxGeometry(0.12, Hh + 0.16, D); for (const sd of [-1, 1]) { const m = new THREE.Mesh(side, shell); m.position.set(sd * (Wd / 2 + 0.06), (Hh + 0.16) / 2, 0); g.add(m); }
+  const top = new THREE.Mesh(new THREE.BoxGeometry(Wd + 0.24, 0.16, D), shell); top.position.y = Hh + 0.08; g.add(top);
+  const inner = new THREE.Mesh(new THREE.PlaneGeometry(Wd, Hh), dark); inner.position.set(0, Hh / 2, -D / 2 + 0.03); g.add(inner);
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(Wd, D), dark); ceil.rotation.x = Math.PI / 2; ceil.position.y = Hh - 0.01; g.add(ceil);
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(Wd + 0.24, 0.05, 0.06), stdMat({ color: 0x3a3630, metalness: 0.5 })); lip.position.set(0, Hh + 0.02, D / 2); g.add(lip);
+  const ex = Math.abs(nx) > 0.5 ? D / 2 : Wd / 2 + 0.12, ez = Math.abs(nx) > 0.5 ? Wd / 2 + 0.12 : D / 2;
+  // side walls (full height) + the low roof: standing up you bump your head, crouched you slide in
+  if (Math.abs(nx) > 0.5) { addBoxCollider(cx - ex, cz - ez, cx + ex, cz - ez + 0.12, -1, 3); addBoxCollider(cx - ex, cz + ez - 0.12, cx + ex, cz + ez, -1, 3); }
+  else { addBoxCollider(cx - ex, cz - ez, cx - ex + 0.12, cz + ez, -1, 3); addBoxCollider(cx + ex - 0.12, cz - ez, cx + ex, cz + ez, -1, 3); }
+  addBoxCollider(cx - ex, cz - ez, cx + ex, cz + ez, Hh + 0.04, Hh + 0.3);
+  const H = { type: 'hole', x: cx, z: cz, hw: Math.abs(nx) > 0.5 ? D / 2 - 0.05 : Wd / 2 - 0.05, hd: Math.abs(nx) > 0.5 ? Wd / 2 - 0.05 : D / 2 - 0.05 };
+  World.hides.push(H);
+  addTrigger({ x: cx + nx * (D / 2 + 0.5), z: cz + nz * (D / 2 + 0.5), w: 0.9, d: 0.9, repeat: true, cond: () => !Game.flags.holeHint, fire: () => { Game.flags.holeHint = 1; UI.msg(`فتحة في الجدار… انحنِ (<b>${keyLabel(Input.binds.crouch)}</b>) وادخل فيها. ما أحد يقدر يلحقك جوّا.`, 3600); } });
+  return { mesh: g, x: cx, z: cz, front: { x: cx + nx * (D / 2 + 0.6), z: cz + nz * (D / 2 + 0.6) } };
 }
 function deskMesh(x, z, ry = 0) {
   const g = new THREE.Group(); const top = stdMat({ color: 0xb79a6a, roughness: 0.55 }), leg = stdMat({ color: 0x303236, metalness: 0.7, roughness: 0.4 });

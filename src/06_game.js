@@ -157,7 +157,7 @@ Game.die = function (mon, reason) {
   setTimeout(() => { this.state = 'dead'; UI.show('dead', true); setTimeout(() => $('retryBtn').focus(), 50); }, mon ? 1900 : 1200);
 };
 function respawn() {
-  UI.show('dead', false); Game.state = 'play'; Game.scare = null; R.P.glitch.value = 0; Game.glitch = 0; Player.pos.y = 0; Player.vy = 0; Player.onGround = true; Player.pitch = 0; Player.light = false;
+  UI.show('dead', false); Game.state = 'play'; Player.sanity = Math.max(Player.sanity, 0.75); Player.battery = Math.max(Player.battery, 0.6); Player.boostT = 0; Game.scare = null; R.P.glitch.value = 0; Game.glitch = 0; Player.pos.y = 0; Player.vy = 0; Player.onGround = true; Player.pitch = 0; Player.light = false;
   const L = Game.level; Player.hidden = false; $('slats').classList.remove('on'); muffle(false);
   Game.monsters.forEach(m => { m.doc.horror = false; m.doc.faceM.emissiveIntensity = 0; });
   if (L.respawn) L.respawn(); else startLevel(L.id);
@@ -210,7 +210,7 @@ function updatePlayer(dt) {
   const mag = Math.min(1, Math.hypot(f, s));
   const crouchWant = down('crouch') || I.tCrouch;
   // can't stand up under a table
-  let ceilingLow = false; for (const h of World.hides) if (h.type === 'table' && Math.abs(P.pos.x - h.x) < h.hw && Math.abs(P.pos.z - h.z) < h.hd) ceilingLow = true; P.under = ceilingLow;
+  let ceilingLow = false; for (const h of World.hides) if ((h.type === 'table' || h.type === 'hole') && Math.abs(P.pos.x - h.x) < h.hw && Math.abs(P.pos.z - h.z) < h.hd) ceilingLow = true; P.under = ceilingLow;
   P.crouch = lerp(P.crouch, crouchWant || ceilingLow ? 1 : 0, dt * 9);
   const chasing = Game.chase > 0.6;
   const wantRun = (down('run') || I.tRun) && mag > 0.3 && P.crouch < 0.5;
@@ -242,8 +242,11 @@ function updatePlayer(dt) {
     if (P.stepAcc > stride) { P.stepAcc = 0; SFX.step(Game.level.surfaceAt ? Game.level.surfaceAt(P.pos) : Game.level.surface, run, P.crouch > 0.5); if (run) Game.noise(P.pos.x, P.pos.z, 13); else if (P.crouch < 0.5) Game.noise(P.pos.x, P.pos.z, 3.2); }
   }
   P.bobAmp = lerp(P.bobAmp || 0, P.onGround ? Math.min(1, sp / 3) : 0, 1 - Math.exp(-6 * dt)); P.bob = Math.sin(P.bobPh) * P.bobAmp;
-  const wasUnder = P.hiddenUnderTable; P.hiddenUnderTable = false;
+  const wasUnder = P.hiddenUnderTable, wasHole = P.inHole; P.hiddenUnderTable = false; P.inHole = false;
   for (const h of World.hides) if (h.type === 'table' && P.crouch > 0.7 && Math.abs(P.pos.x - h.x) < h.hw - 0.05 && Math.abs(P.pos.z - h.z) < h.hd - 0.05) P.hiddenUnderTable = true;
+  for (const h of World.hides) if (h.type === 'hole' && Math.abs(P.pos.x - h.x) < h.hw && Math.abs(P.pos.z - h.z) < h.hd) P.inHole = true;
+  if (P.inHole && !wasHole) { for (const m of Game.monsters) { m.sawHide = false; if (m.state === 'chase') { m.state = 'search'; m.searchT = Game.t + rnd(6, 9); m.goto(P.pos.x + rnd(-2, 2), P.pos.z + rnd(-2, 2)); } } muffle(true); SFX.step('concrete', false, true); }
+  if (!P.inHole && wasHole) muffle(false);
   if (P.hiddenUnderTable && !wasUnder) Game.onHide();
   updateSurvival(dt);
 }
@@ -284,7 +287,7 @@ function updateTransition(dt) {
 }
 function hudFrame() {
   const P = Player; $('stamF').style.width = (P.stamina * 100) + '%'; $('stam').classList.toggle('on', P.stamina < 0.98); $('stam').classList.toggle('ex', P.exhausted);
-  $('hidden').classList.toggle('on', !!P.hidden || P.hiddenUnderTable); $('batF').style.width = (P.battery * 100) + '%'; $('bat').classList.toggle('low', P.battery < 0.2); $('sanF').style.width = (P.sanity * 100) + '%'; $('san').classList.toggle('low', P.sanity < 0.3); $('undert').classList.toggle('on', (P.hidden && P.hidden.type === 'table') || P.hiddenUnderTable);
+  $('hidden').classList.toggle('on', !!P.hidden || P.hiddenUnderTable || P.inHole); $('batF').style.width = (P.battery * 100) + '%'; $('bat').classList.toggle('low', P.battery < 0.2); $('sanF').style.width = (P.sanity * 100) + '%'; $('san').classList.toggle('low', P.sanity < 0.3); $('undert').classList.toggle('on', (P.hidden && P.hidden.type === 'table') || P.hiddenUnderTable || P.inHole);
 }
 /* ---------------- key handling ---------------- */
 Game.onKey = function (code) {
@@ -341,7 +344,7 @@ function updateSurvival(dt) {
   if (P.light && !P.hidden) { P.battery = Math.max(0, P.battery - dt / 95); if (P.battery <= 0) { P.light = false; SFX.click(); UI.msg('البطارية خلصت 🔋', 2000); } }
   // sanity: darkness and doctors wear you down, light and hiding with the door shut calm you
   const lit = P.inLight(), near = Game.stress;
-  let ds = 0; if (!lit && !P.light) ds -= dt / 150; if (near > 0.3) ds -= dt * near / 55; if (lit) ds += dt / 260;
+  let ds = 0; if (!lit && !P.light) ds -= dt / 330; if (near > 0.3) ds -= dt * near / 120; if (lit || P.light) ds += dt / 220; if (P.inHole) ds += dt / 90;
   if (Game.level && Game.level.id === 'END') ds = dt;
   P.sanity = clamp(P.sanity + ds, 0, 1);
   R.P.wobble.value = Math.max(R.P.wobble.value * 0.95, P.sanity < 0.3 ? (0.3 - P.sanity) * 2.2 : 0);
@@ -355,7 +358,7 @@ function hallucinate() {
   else if (r < 0.8) { const d = Game.monsters[0]; if (d && d.state === 'off') return; const L = VOICE_LINES[d ? d.type : 'mujahid']; voice(pick(L.idle || [L.taunt1]), P.pos.x + Math.sin(a) * 3, P.pos.z + Math.cos(a) * 3, { force: true, rate: 0.8 }); }
   else { // a phantom doctor at the far end of your view that vanishes when you get close or blink
     const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); const x = P.pos.x + fx * 9, z = P.pos.z + fz * 9; if (!losCheck(P.pos.x, P.pos.z, x, z)) return;
-    const ph = makeDoctor(pick(['mujahid', 'minhaj', 'amal'])); ph.root.position.set(x, 0, z); ph.root.rotation.y = Math.atan2(-fx, -fz); ph.horror = true; ph.faceM.emissiveIntensity = 2; World.group.add(ph.root);
+    const ph = makeDoctor((Game.monsters[0] && Game.monsters[0].type) || 'mujahid'); ph.root.position.set(x, 0, z); ph.root.rotation.y = Math.atan2(-fx, -fz); ph.horror = true; ph.faceM.emissiveIntensity = 2; World.group.add(ph.root);
     let t = 0; World.updaters.push(function f(dt) { t += dt; const d = Math.hypot(P.pos.x - x, P.pos.z - z); if (t > 1.6 || d < 5) { World.group.remove(ph.root); SFX.stinger(); Game.glitch = 0.5; later(() => Game.glitch = 0, 250); const i = World.updaters.indexOf(f); if (i >= 0) World.updaters.splice(i, 1); } });
   }
 }
