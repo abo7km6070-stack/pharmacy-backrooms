@@ -4,7 +4,7 @@
 const Player = {
   pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: 0, vy: 0, onGround: true, crouch: 0, stamina: 1, exhausted: false,
   light: false, hidden: false, hideT: -99, hiddenUnderTable: false, bob: 0, bobPh: 0, stepAcc: 0, r: 0.27, sway: 0, swayV: 0, safe: false, frozen: false, moveAmt: 0, peek: false, lastGround: 0,
-  eyeY() { return this.pos.y + 1.62 - this.crouch * 0.72; },
+  eyeY() { if (this.hidden && this.hidden.type === 'table') return this.pos.y + 0.46; const e = this.pos.y + 1.62 - this.crouch * 0.72; return this.under ? Math.min(e, this.pos.y + 0.6) : e; },
   inLight() { // near a lit ceiling fixture?
     if (World.blackout) return false;
     for (const f of World.fixtures) if (f.base * f.level > 0.25 && f.d2 !== undefined && f.d2 < 14) return true;
@@ -15,15 +15,41 @@ const Game = {
   state: 'title', t: 0, level: null, inv: {}, noises: [], chase: 0, stress: 0, monsters: [], subs: store.get('subs', true), shakeAmt: 0, deaths: 0, startT: 0, notesRead: 0, flags: {},
   noise(x, z, r) { this.noises.push({ x, z, r, t: this.t }); },
   shake(a) { this.shakeAmt = Math.max(this.shakeAmt, a); },
-  updateInv() { const el = $('inv'); el.innerHTML = Object.keys(this.inv).filter(k => this.inv[k]).map(k => `<span class="item" title="${INV_NAMES[k] || k}">${INV_ICONS[k] || '•'}</span>`).join(''); }
+  held: 'phone',
+  slots() { return ['phone'].concat(Object.keys(this.inv).filter(k => this.inv[k] && k !== 'phone')); },
+  updateInv() {
+    const sl = this.slots(); if (!sl.includes(this.held)) this.held = 'phone';
+    $('inv').innerHTML = sl.map((k, i) => `<span class="item${k === this.held ? ' sel' : ''}" data-k="${k}" title="${INV_NAMES[k] || k}"><b>${i + 1}</b>${INV_ICONS[k] || '•'}</span>`).join('');
+    $('inv').querySelectorAll('.item').forEach(el => el.onpointerdown = e => { e.stopPropagation(); this.hold(el.dataset.k); });
+    if ($('bag').classList.contains('on')) renderBag();
+    updateHeldModel();
+  },
+  hold(k) { if (!this.slots().includes(k)) return; this.held = k; SFX.click(); this.updateInv(); if (k !== 'phone') UI.msg('بيدك الحين: <b>' + (INV_NAMES[k] || k) + '</b>', 1400); }
 };
-const INV_NAMES = { redkey: 'مفتاح قاعة الاختبار', k1: 'مفتاح ١', k2: 'مفتاح ٢', k3: 'مفتاح ٣', k4: 'مفتاح ٤', ladder: 'أجزاء السلّم' };
-const INV_ICONS = { redkey: '🔴', k1: '🗝️', k2: '🗝️', k3: '🗝️', k4: '🗝️' };
+const INV_NAMES = { phone: 'الجوال (كشاف)', redkey: 'مفتاح قاعة الاختبار', k1: 'مفتاح البوابة ١', k2: 'مفتاح البوابة ٢', k3: 'مفتاح البوابة ٣', k4: 'مفتاح البوابة ٤', ladder: 'قطع السلّم' };
+const INV_DESC = { phone: 'اضغط زر الكشاف عشان تشغّل النور. النور يبيّنك للدكاترة.', redkey: 'مفتاح أحمر مكتوب عليه «قاعة الاختبار». امسكه بيدك وافتح الباب.', k1: 'واحد من أربعة مفاتيح للوحة البوابة.', k2: 'واحد من أربعة مفاتيح للوحة البوابة.', k3: 'واحد من أربعة مفاتيح للوحة البوابة.', k4: 'واحد من أربعة مفاتيح للوحة البوابة.', ladder: 'تحتاج ٤ قطع عشان تركّب السلّم عند رف المكتبة.' };
+const INV_ICONS = { phone: '📱', redkey: '🔴', k1: '🗝️', k2: '🗝️', k3: '🗝️', k4: '🗝️', ladder: '🪜' };
+function renderBag() {
+  const sl = Game.slots();
+  $('bagGrid').innerHTML = sl.map((k, i) => `<button class="bagItem${k === Game.held ? ' sel' : ''}" data-k="${k}"><span class="bi">${INV_ICONS[k] || '•'}</span><span class="bn">${i + 1} · ${INV_NAMES[k] || k}${k === 'ladder' ? ' ×' + ar(Game.flags.pieces || 0) : ''}</span><span class="bd">${INV_DESC[k] || ''}</span></button>`).join('');
+  $('bagGrid').querySelectorAll('.bagItem').forEach(b => b.onclick = () => { Game.hold(b.dataset.k); });
+}
+function toggleBag(on) {
+  if (on === undefined) on = !$('bag').classList.contains('on');
+  if (on) { if (Game.state !== 'play') return; Game.state = 'bag'; unlockPointer(); renderBag(); UI.show('bag', true); SFX.paper(); }
+  else { UI.show('bag', false); if (Game.state === 'bag') { Game.state = 'play'; lockPointer(); } }
+}
+let heldModel = null;
+function updateHeldModel() {
+  if (!Player.phone) return;
+  if (!heldModel) { heldModel = new THREE.Group(); const gold = new THREE.MeshStandardMaterial({ color: 0xc8a040, metalness: 0.9, roughness: 0.3 }); const ring = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.006, 8, 16), gold); const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.07, 0.006), gold); shaft.position.y = -0.05; const bit = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.01, 0.006), gold); bit.position.set(0.01, -0.078, 0); heldModel.add(ring, shaft, bit); heldModel.tag = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 0.004), new THREE.MeshStandardMaterial({ color: 0xc01818 })); heldModel.tag.position.set(0, 0.03, 0); heldModel.add(heldModel.tag); heldModel.position.set(-0.16, -0.17, -0.34); heldModel.rotation.set(0.3, 0.4, 0.5); heldModel.traverse(o => { if (o.isMesh) o.renderOrder = 10; }); R.camera.add(heldModel); }
+  const k = Game.held; heldModel.visible = k !== 'phone' && k !== 'ladder'; heldModel.tag.visible = k === 'redkey';
+}
 
 /* flashlight (phone torch) */
 let torch;
 function initTorch() {
-  torch = new THREE.SpotLight(0xfff4e0, 0, 22, 0.52, 0.55, 1.6); torch.position.set(0.18, -0.12, 0.05);
+  torch = new THREE.SpotLight(0xfff4e0, 0, 30, 0.5, 0.5, 1.3); torch.position.set(0.18, -0.12, 0.05);
   R.camera.add(torch); torch.target.position.set(0, -0.1, -2); R.camera.add(torch.target);
   // phone held in hand (viewmodel)
   const phone = new THREE.Group();
@@ -37,7 +63,7 @@ function initTorch() {
 }
 /* ---------------- interaction ---------------- */
 function findInteract() {
-  if (Player.hidden) return { label: 'اطلع', use: () => unhide() };
+  if (Player.hidden) { if (Player.hidden.type === 'table') { const u = World.interact.find(o => o.underOK && !o.done && Math.hypot(o.pos.x - Player.pos.x, o.pos.z - Player.pos.z) < (o.r || 1.6)); if (u) return u; } return { label: 'اطلع', use: () => unhide() }; }
   const ex = Player.pos.x, ez = Player.pos.z, fx = -Math.sin(Player.yaw), fz = -Math.cos(Player.yaw);
   let best = null, bs = 1e9;
   for (const o of World.interact) {
@@ -57,13 +83,14 @@ function doInteract() { const o = findInteract(); if (!o) return; const r = o.us
 function hideIn(spot) {
   Player.hidden = spot; Player.hideT = Game.t; Player.preHide = { x: Player.pos.x, z: Player.pos.z };
   Player.pos.x = spot.x; Player.pos.z = spot.z; if (spot.yaw !== undefined) { Player.yaw = spot.yaw; Player.pitch = 0; }
-  Player.light = false; SFX.doorOpen(spot.x, spot.z); muffle(true);
+  if (spot.type === 'table') { Player.pitch = 0.05; spot.out = { x: Player.preHide.x, z: Player.preHide.z }; const dx = Player.preHide.x - spot.x, dz = Player.preHide.z - spot.z; Player.yaw = Math.atan2(-dx, -dz); }
+  Player.light = false; if (spot.type === 'table') SFX.step('carpet', false, true); else SFX.doorOpen(spot.x, spot.z); muffle(true);
   $('slats').classList.toggle('on', spot.type === 'locker');
   UI.prompt('');
 }
 function unhide() {
   const s = Player.hidden; Player.hidden = false; muffle(false); $('slats').classList.remove('on');
-  Player.pos.x = s.out.x; Player.pos.z = s.out.z; SFX.doorShut(s.x, s.z); Game.noise(s.x, s.z, 3);
+  Player.pos.x = s.out.x; Player.pos.z = s.out.z; if (s.type === 'table') { Player.crouch = 1; } else SFX.doorShut(s.x, s.z); Game.noise(s.x, s.z, 3);
 }
 /* ---------------- notes (paper UI) ---------------- */
 function openNote(note) {
@@ -132,10 +159,11 @@ function noclipTo(next, text) {
   Game.trans = { t: 0, next, text };
 }
 /* ---------------- main update ---------------- */
-let lastT = performance.now();
+let lastT = performance.now(); const dtHist = [];
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  const raw = Math.min(0.1, (now - lastT) / 1000); lastT = now; dtHist.push(raw); if (dtHist.length > 5) dtHist.shift();
+  const dt = Math.min(0.05, dtHist.reduce((a, b) => a + b, 0) / dtHist.length);
   Game.t += dt; R.P.time.value = Game.t;
   Game.chase *= Math.pow(0.4, dt); Game.stress *= Math.pow(0.5, dt);
   if (Game.state === 'play') {
@@ -163,56 +191,63 @@ function updatePlayer(dt) {
   P.yaw -= I.lookX * sens; P.pitch -= I.lookY * sens; I.lookX = I.lookY = 0;
   P.pitch = clamp(P.pitch, -1.45, 1.45);
   if (I.keys.ArrowLeft) P.yaw += dt * 2.2; if (I.keys.ArrowRight) P.yaw -= dt * 2.2;
-  if (P.hidden) { P.vel.set(0, 0, 0); P.crouch = lerp(P.crouch, P.hidden.type === 'table' ? 1 : 0.15, dt * 8); P.moveAmt = 0; if (P.hidden.type === 'locker') P.yaw = clamp(P.yaw, P.hidden.yaw - 0.6, P.hidden.yaw + 0.6); return; }
+  if (P.hidden) { P.vel.set(0, 0, 0); P.crouch = lerp(P.crouch, P.hidden.type === 'table' ? 1 : 0.15, dt * 8); P.moveAmt = 0; if (P.hidden.type === 'locker') P.yaw = clamp(P.yaw, P.hidden.yaw - 0.6, P.hidden.yaw + 0.6); if (P.hidden.type === 'table') P.pitch = clamp(P.pitch, -0.5, 0.25); return; }
   if (P.frozen) { P.vel.set(0, 0, 0); P.moveAmt = 0; return; }
   let f = 0, s = 0;
-  if (I.keys.KeyW || I.keys.ArrowUp) f += 1; if (I.keys.KeyS || I.keys.ArrowDown) f -= 1; if (I.keys.KeyD) s += 1; if (I.keys.KeyA) s -= 1;
+  if (down('fwd')) f += 1; if (down('back')) f -= 1; if (down('right')) s += 1; if (down('left')) s -= 1;
   f -= I.joy.y; s += I.joy.x;
   const mag = Math.min(1, Math.hypot(f, s));
-  const crouchWant = I.keys.ControlLeft || I.keys.KeyC || I.tCrouch;
+  const crouchWant = down('crouch') || I.tCrouch;
   // can't stand up under a table
-  let ceilingLow = false; for (const h of World.hides) if (h.type === 'table' && Math.abs(P.pos.x - h.x) < h.hw && Math.abs(P.pos.z - h.z) < h.hd) ceilingLow = true;
+  let ceilingLow = false; for (const h of World.hides) if (h.type === 'table' && Math.abs(P.pos.x - h.x) < h.hw && Math.abs(P.pos.z - h.z) < h.hd) ceilingLow = true; P.under = ceilingLow;
   P.crouch = lerp(P.crouch, crouchWant || ceilingLow ? 1 : 0, dt * 9);
   const chasing = Game.chase > 0.6;
-  const wantRun = (I.keys.ShiftLeft || I.keys.ShiftRight || I.tRun) && mag > 0.3 && P.crouch < 0.5;
+  const wantRun = (down('run') || I.tRun) && mag > 0.3 && P.crouch < 0.5;
   if (P.exhausted && P.stamina > 0.35) P.exhausted = false;
   const run = wantRun && !P.exhausted;
   if (run && !chasing && !Game.level.unlimitedStamina) { P.stamina -= dt / 6.5; if (P.stamina <= 0) { P.stamina = 0; P.exhausted = true; } }
   else P.stamina = Math.min(1, P.stamina + dt * (P.exhausted ? 0.12 : 0.2) * (run ? 0.3 : 1));
-  const spd = (run ? 5.5 : P.crouch > 0.5 ? 1.45 : 2.9) * (Game.level.speedMul || 1);
+  const spd = (run ? 4.5 : P.crouch > 0.5 ? 1.45 : 2.7) * (Game.level.speedMul || 1);
   const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
   let vx = (-sy * f + cy * s), vz = (-cy * f - sy * s); const l = Math.hypot(vx, vz) || 1; vx = vx / l * spd * mag; vz = vz / l * spd * mag;
   // balance sway on beams
   if (P.onBeam) { P.swayV += (Math.random() - 0.5) * dt * 2.6 + Math.sign(P.sway || 0.01) * dt * 0.55; P.swayV *= 0.985; P.sway += P.swayV * dt; vx += cy * P.sway * 1.6; vz += -sy * P.sway * 1.6; }
   else { P.sway *= 0.9; P.swayV *= 0.9; }
-  const acc = P.onGround ? 12 : 3; P.vel.x = lerp(P.vel.x, vx, Math.min(1, acc * dt)); P.vel.z = lerp(P.vel.z, vz, Math.min(1, acc * dt));
-  P.pos.x += P.vel.x * dt; P.pos.z += P.vel.z * dt;
-  collide(P.pos, P.r, P.pos.y + 0.3, P.pos.y + 1.7 - P.crouch * 0.7);
+  const speeding = vx * vx + vz * vz > P.vel.x * P.vel.x + P.vel.z * P.vel.z; const acc = P.onGround ? (speeding ? 9 : 13) : 2.5; const kAcc = 1 - Math.exp(-acc * dt); P.vel.x += (vx - P.vel.x) * kAcc; P.vel.z += (vz - P.vel.z) * kAcc;
+  P.strafe = lerp(P.strafe || 0, P.vel.x * cy - P.vel.z * sy, 1 - Math.exp(-8 * dt)); P.running = run && mag > 0.3;
+  // sub-stepped so a slow frame can never carry you through a wall
+  const travel = Math.hypot(P.vel.x, P.vel.z) * dt, nSub = Math.min(8, Math.max(1, Math.ceil(travel / 0.07)));
+  for (let i = 0; i < nSub; i++) { P.pos.x += P.vel.x * dt / nSub; P.pos.z += P.vel.z * dt / nSub; collide(P.pos, P.r, P.pos.y + 0.3, P.pos.y + 1.7 - P.crouch * 0.7); }
   // vertical
   const g = groundAt(P.pos.x, P.pos.z, P.pos.y);
   if (P.onGround && P.pos.y - g > 0.05) P.onGround = false;
-  if (!P.onGround) { P.vy -= 18 * dt; P.pos.y += P.vy * dt; if (P.pos.y <= g) { if (P.vy < -7) { SFX.land(); Game.shake(0.3); } P.pos.y = g; P.vy = 0; P.onGround = true; } }
+  if (!P.onGround) { P.vy -= 18 * dt; P.pos.y += P.vy * dt; if (P.pos.y <= g) { if (P.vy < -3) { P.landDip = Math.min(0.12, -P.vy * 0.012); SFX.land(); } if (P.vy < -7) Game.shake(0.3); P.pos.y = g; P.vy = 0; P.onGround = true; } }
   else P.pos.y = lerp(P.pos.y, g, Math.min(1, dt * 14));
   if (P.pos.y < (World.killY ?? -50)) { if (Game.level.onFall) Game.level.onFall(); }
   const sp = Math.hypot(P.vel.x, P.vel.z); P.moveAmt = sp;
   // steps + noise
   if (sp > 0.4 && P.onGround) {
-    P.bobPh += dt * sp * 2.4; P.stepAcc += sp * dt; const stride = run ? 1.25 : 0.95;
+    P.bobPh += dt * (2.2 + sp * 1.55); P.stepAcc += sp * dt; const stride = run ? 1.25 : 0.95;
     if (P.stepAcc > stride) { P.stepAcc = 0; SFX.step(Game.level.surfaceAt ? Game.level.surfaceAt(P.pos) : Game.level.surface, run, P.crouch > 0.5); if (run) Game.noise(P.pos.x, P.pos.z, 13); else if (P.crouch < 0.5) Game.noise(P.pos.x, P.pos.z, 3.2); }
   }
-  P.bob = Math.sin(P.bobPh) * Math.min(1, sp / 3);
+  P.bobAmp = lerp(P.bobAmp || 0, P.onGround ? Math.min(1, sp / 3) : 0, 1 - Math.exp(-6 * dt)); P.bob = Math.sin(P.bobPh) * P.bobAmp;
   P.hiddenUnderTable = false;
-  for (const h of World.hides) if (h.type === 'table' && P.crouch > 0.7 && Math.abs(P.pos.x - h.x) < h.hw - 0.1 && Math.abs(P.pos.z - h.z) < h.hd - 0.1) P.hiddenUnderTable = true;
+  for (const h of World.hides) if (h.type === 'table' && P.crouch > 0.7 && Math.abs(P.pos.x - h.x) < h.hw - 0.05 && Math.abs(P.pos.z - h.z) < h.hd - 0.05) P.hiddenUnderTable = true;
 }
 function updateCamera(dt) {
   const P = Player, c = R.camera;
   Game.shakeAmt *= Math.pow(0.02, dt);
   const sh = reduceMotion ? 0 : Game.shakeAmt * 0.05;
   const breathe = Math.sin(Game.t * 1.4) * 0.006;
-  c.position.set(P.pos.x + (Math.random() - 0.5) * sh, P.eyeY() + Math.abs(P.bob) * 0.045 + breathe + (Math.random() - 0.5) * sh, P.pos.z + (Math.random() - 0.5) * sh);
-  c.rotation.order = 'YXZ'; c.rotation.y = P.yaw; c.rotation.x = P.pitch + Math.sin(P.bobPh * 0.5) * 0.006; c.rotation.z = (P.sway || 0) * -0.35 + Math.sin(P.bobPh * 0.5) * 0.004 * P.moveAmt;
-  const targetI = P.light && !P.hidden ? 22 : 0; torch.intensity = lerp(torch.intensity, targetI * (Game.torchFlicker ? (Math.random() < 0.3 ? 0.2 : 1) : 1), Math.min(1, dt * 18));
-  Player.phone.position.y = -0.2 + P.bob * 0.008 - (P.hidden ? 0.3 : 0); Player.phone.position.x = 0.2 + Math.cos(P.bobPh * 0.5) * 0.006;
+  P.landDip = (P.landDip || 0) * Math.exp(-7 * dt);
+  P.eyeS = P.eyeS === undefined ? P.eyeY() : lerp(P.eyeS, P.eyeY(), 1 - Math.exp(-14 * dt));
+  const bobY = (Math.abs(Math.sin(P.bobPh)) - 0.5) * 0.05 * (P.bobAmp || 0) * (P.running ? 1.5 : 1), bobX = Math.cos(P.bobPh) * 0.022 * (P.bobAmp || 0);
+  const rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
+  c.position.set(P.pos.x + rx * bobX + (Math.random() - 0.5) * sh, P.eyeS + bobY + breathe - P.landDip + (Math.random() - 0.5) * sh, P.pos.z + rz * bobX + (Math.random() - 0.5) * sh);
+  c.rotation.order = 'YXZ'; c.rotation.y = P.yaw; c.rotation.x = P.pitch + bobY * 0.15; c.rotation.z = (P.sway || 0) * -0.35 - (P.strafe || 0) * 0.011 + Math.cos(P.bobPh) * 0.003 * (P.bobAmp || 0);
+  const fovT = 74 + (P.running ? 7 : 0) + clamp(Game.chase, 0, 1) * 3 - (P.hidden ? 6 : 0); if (Math.abs(c.fov - fovT) > 0.05) { c.fov = lerp(c.fov, fovT, 1 - Math.exp(-5 * dt)); c.updateProjectionMatrix(); }
+  const targetI = P.light && !P.hidden ? 46 : 0; torch.intensity = lerp(torch.intensity, targetI * (Game.torchFlicker ? (Math.random() < 0.3 ? 0.2 : 1) : 1), Math.min(1, dt * 18));
+  Player.phone.position.y = lerp(Player.phone.position.y, -0.2 + bobY * 0.35 - (P.hidden ? 0.3 : 0) - (P.running ? 0.03 : 0), 1 - Math.exp(-12 * dt)); Player.phone.position.x = 0.2 + bobX * 0.4; Player.phone.rotation.z = 0.05 + (P.strafe || 0) * 0.02;
   Player.phoneScr.material.emissiveIntensity = P.light ? 1.2 : 0.4;
   // post-fx response
   const U = R.P; const st = clamp(Game.stress, 0, 1);
@@ -236,17 +271,21 @@ function updateTransition(dt) {
 }
 function hudFrame() {
   const P = Player; $('stamF').style.width = (P.stamina * 100) + '%'; $('stam').classList.toggle('on', P.stamina < 0.98); $('stam').classList.toggle('ex', P.exhausted);
-  $('hidden').classList.toggle('on', !!P.hidden || P.hiddenUnderTable);
+  $('hidden').classList.toggle('on', !!P.hidden || P.hiddenUnderTable); $('undert').classList.toggle('on', (P.hidden && P.hidden.type === 'table') || P.hiddenUnderTable);
 }
 /* ---------------- key handling ---------------- */
 Game.onKey = function (code) {
+  const a = actionOf(code);
   if (Game.state === 'play') {
-    if (code === 'KeyE') doInteract();
-    else if (code === 'KeyF') { if (!Player.hidden) { Player.light = !Player.light; SFX.click(); if (Player.light) Game.noise(Player.pos.x, Player.pos.z, 2); } }
-    else if (code === 'Space') { if (Player.onGround && !Player.hidden && Player.crouch < 0.5) { Player.vy = 5.6; Player.onGround = false; Player.pos.y += 0.02; } }
+    if (a === 'use') doInteract();
+    else if (a === 'light') { if (!Player.hidden) { Player.light = !Player.light; SFX.click(); if (Player.light) Game.noise(Player.pos.x, Player.pos.z, 2); } }
+    else if (a === 'jump') { if (Player.onGround && !Player.hidden && Player.crouch < 0.5) { Player.vy = 5.6; Player.onGround = false; Player.pos.y += 0.02; } }
+    else if (a === 'bag') toggleBag(true);
+    else if (a === 'peek' && Player.hidden) Player.peek = !Player.peek;
     else if (code === 'Escape' || code === 'KeyP') Game.pause(true);
-    else if (code === 'KeyQ' && Player.hidden) Player.peek = !Player.peek;
-  } else if (Game.state === 'note') { if (code === 'KeyE' || code === 'Escape' || code === 'Space') closeNote(); }
+    else if (/^Digit[1-9]$/.test(code)) { const sl = Game.slots(), i = +code.slice(5) - 1; if (sl[i]) Game.hold(sl[i]); }
+  } else if (Game.state === 'bag') { if (a === 'bag' || code === 'Escape') toggleBag(false); else if (/^Digit[1-9]$/.test(code)) { const sl = Game.slots(), i = +code.slice(5) - 1; if (sl[i]) Game.hold(sl[i]); } }
+  else if (Game.state === 'note') { if (a === 'use' || code === 'Escape' || code === 'Space') closeNote(); }
   else if (Game.state === 'ui') { if (code === 'Escape') { if (Game.keypad) closeKeypad(); if (Game.term) closeTerminal(); } else if (code === 'Enter' && Game.term) termSubmit(); }
   else if (Game.state === 'paused' && code === 'Escape') Game.pause(false);
   else if (Game.state === 'dead' && (code === 'Space' || code === 'Enter')) respawn();

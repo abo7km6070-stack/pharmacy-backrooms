@@ -178,11 +178,12 @@ function addDoor(G, x, y, nx, ny, opts = {}) {
   World.dyn.push(col);
   const door = { G, x, y, nx, ny, ex, ez, horiz, pivot, leaf, open: 0, target: 0, locked: !!opts.locked, key: opts.key, col, name: opts.name || 'الباب', swing: opts.swing || 1, onOpen: opts.onOpen, fake: opts.fake, banged: 0, closedT: 0 };
   G.doorAt.set(edgeKey(x, y, nx, ny), door); World.doors.push(door);
-  World.interact.push({ door, get pos() { return { x: door.ex, y: 1.2, z: door.ez }; }, r: 1.9, label: () => door.locked ? (door.key && Game.inv[door.key] ? 'افتح بالمفتاح' : 'مقفل') : (door.target > 0.5 ? 'سكّر الباب' : 'افتح الباب'), use: () => useDoor(door) });
+  World.interact.push({ door, get pos() { return { x: door.ex, y: 1.2, z: door.ez }; }, r: 1.9, label: () => door.locked ? (door.key && Game.inv[door.key] ? (Game.held === door.key ? 'افتح بالمفتاح' : 'امسك المفتاح وافتح') : 'مقفل') : (door.target > 0.5 ? 'سكّر الباب' : 'افتح الباب'), use: () => useDoor(door) });
   return door;
 }
 function useDoor(d) {
   if (d.locked) {
+    if (d.key && Game.inv[d.key] && Game.held !== d.key) { SFX.locked(); const i = Game.slots().indexOf(d.key) + 1; UI.msg(`امسك <b>${INV_NAMES[d.key]}</b> بيدك أول (اضغط <b>${ar(i)}</b> أو افتح الشنطة)`, 3200); return; }
     if (d.key && Game.inv[d.key]) { d.locked = false; delete Game.inv[d.key]; Game.updateInv(); SFX.unlock(); UI.msg('انفتح القفل', 1600); setTimeout(() => toggleDoor(d), 300); if (d.onUnlock) d.onUnlock(); return; }
     SFX.locked(); Game.noise(d.ex, d.ez, 6); if (d.lockedMsg) UI.msg(d.lockedMsg, 3000); return;
   }

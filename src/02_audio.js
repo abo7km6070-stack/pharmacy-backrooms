@@ -167,23 +167,31 @@ const SFX = {
 };
 /* ---------- voice lines (ElevenLabs mp3s embedded as base64) ---------- */
 const VOICE_LINES = {
-  mujahid: { taunt1: 'm1', taunt2: 'm2', caught: 'm3', quiz: 'm4' },
-  minhaj: { lure: 'n1', taunt1: 'n2', taunt2: 'n3', caught: 'n4' },
-  amal: { taunt1: 'a1', dark: 'a2', taunt2: 'a3', caught: 'a4' }
+  mujahid: { taunt1: 'm1', taunt2: 'm2', caught: 'm3', quiz: 'm4', idle: ['m5', 'm6', 'm7'], chase: ['m8', 'm1', 'm2'] },
+  minhaj: { lure: 'n1', taunt1: 'n2', taunt2: 'n3', caught: 'n4', idle: ['n5', 'n3'], chase: ['n6', 'n2'] },
+  amal: { taunt1: 'a1', dark: 'a2', taunt2: 'a3', caught: 'a4', idle: ['a5', 'a1'], chase: ['a6', 'a3'] }
 };
 const SUBS = {
-  m1: 'د. مجاهد: <b>يا زول… إنت ماشي وين؟ الامتحان لسه ما انتهى!</b>',
-  m2: 'د. مجاهد: <b>أنا شايفك… تعال تعال، عندي ليك سؤال بونص.</b>',
-  m3: 'د. مجاهد: <b>قبضتك يا ولد! راسب… راسب!</b>',
-  m4: 'د. مجاهد: <b>كويز مفاجئ… ما في زول بيطلع من هنا قبل يحل.</b>',
+  m1: 'د. مجاهد: <b>يا زُول! إنتَ ماشي وين يا زُول؟ الامتحان لِسّه ما خَلَص!</b>',
+  m2: 'د. مجاهد: <b>مالَك يا زُول؟ جاري مالَك كِدا؟ تَعال تَعال… ما في عَوجة. سُؤال واحِد بَس.</b>',
+  m3: 'د. مجاهد: <b>هُوي! لِحِقتَك يا زُول! خَلاص… المادّة دي بِتعيدها مَعاي السَّنة الجايّة.</b>',
+  m4: 'د. مجاهد: <b>يا جَماعة الخِير… كويز مُفاجِئ! زُول ما بيَطلَع مِن هِنا قَبُل ما يِحِل، سِمِعتو؟</b>',
+  m5: 'د. مجاهد: <b>الطَّلَبة دِيل مَشو وين؟ أنا عارِف إنّو في زُول هِنا… بَشِمّ ريحتو.</b>',
+  m6: 'د. مجاهد: <b>يا زُول، الحاجة دي ساهلة خالِص… مالَك خايِف؟ أطلَع بَس.</b>',
+  m7: 'د. مجاهد: <b>أمم… الميتفورمين… خُمُسْمِيّة مِلّي… الزُّول البيعرِف الجُرعة بيَطلَع.</b>',
+  m8: 'د. مجاهد: <b>أَجري أَجري يا زُول! أنا جايّك هَسّي!</b>',
   n1: 'د. منهاج: <b><bdi dir="ltr">Hello?… Abdulmalik? Is that you, my friend? Come here…</bdi></b>',
   n2: 'د. منهاج: <b><bdi dir="ltr">Where are you going, my dear? Submission is closed!</bdi></b>',
   n3: 'د. منهاج: <b><bdi dir="ltr">You cannot hide from attendance… I am counting.</bdi></b>',
   n4: 'د. منهاج: <b><bdi dir="ltr">Zero marks! Zero!</bdi></b>',
-  a1: 'د. أمل: <b>يا حبيبي… وين رايح؟ تعال، ما راح أسوي لك شي.</b>',
-  a2: 'د. أمل: <b>النور طفى… وأنا مرة أحب الضلمة.</b>',
-  a3: 'د. أمل: <b>تعال وريني الريبورت حقك يا قلبي… لا تخاف.</b>',
-  a4: 'د. أمل: <b>خلاص يا قلبي… شِلت المادة!</b>'
+  n5: 'د. منهاج: <b><bdi dir="ltr">Where is everybody, yaar? Roll number thirty-seven… absent. Absent again.</bdi></b>',
+  n6: 'د. منهاج: <b><bdi dir="ltr">Run, run, my dear! I am very tall, I can see you everywhere!</bdi></b>',
+  a1: 'د. أمل: <b>يا حَبيبي… فين رايِح؟ تَعال، ما راح أسَوّي لَك شي.</b>',
+  a2: 'د. أمل: <b>النّور طِفي… وأنا مَرّة أحِبّ الضَّلْمة.</b>',
+  a3: 'د. أمل: <b>تَعال وَرّيني الرّيبورت حَقّك يا قَلبي… لا تِخاف.</b>',
+  a4: 'د. أمل: <b>خَلاص يا قَلبي… شِلت المادّة!</b>',
+  a5: 'د. أمل: <b>يا حِلوين… فينَكُم؟ أنا مَرّة أحِبّ الطُّلاب اللي يِستَخبّون.</b>',
+  a6: 'د. أمل: <b>لا تِجري يا قَلبي… كِده تِتعِب نَفسَك، تَعال بَس!</b>'
 };
 async function decodeVoices() {
   const src = window.VOICE_DATA || {};
@@ -200,7 +208,8 @@ function voice(id, x, z, opts = {}) {
   const now = A.ctx.currentTime;
   if (!opts.force && now - lastVoiceT < 3.5) return 0;
   lastVoiceT = now;
-  if (SUBS[id] && Game.subs) UI.sub(SUBS[id], 3800);
+  const dist = opts.flat ? 0 : Math.hypot(x - Player.pos.x, z - Player.pos.z);
+  if (SUBS[id] && Game.subs && dist < 22) UI.sub(SUBS[id], 4200);
   const buf = A.voices[id];
   if (!buf) { SFX.laughSynth(x, z, id[0] === 'a' ? 1.5 : id[0] === 'n' ? 0.85 : 0.75); return 1.5; }
   const c = A.ctx, s = c.createBufferSource(); s.buffer = buf; s.playbackRate.value = opts.rate || 1;

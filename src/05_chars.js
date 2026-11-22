@@ -177,7 +177,7 @@ function animDoctor(doc, dt, speed, mode) {
 class Monster {
   constructor(type, opt) {
     this.type = type; this.doc = makeDoctor(type); this.root = this.doc.root; World.group.add(this.root);
-    Object.assign(this, { walk: 1.45, run: 5.9, turn: 6, sight: 16, sightDark: 4.5, fov: 1.9, hear: 1, lose: 4.5, doors: 'bang', catchR: 0.95 }, opt);
+    Object.assign(this, { walk: 1.3, run: 4.85, turn: 6, sight: 16, sightDark: 4.5, fov: 1.9, hear: 1, lose: 4.5, doors: 'bang', catchR: 0.95 }, opt);
     this.pos = new THREE.Vector3(); this.yaw = 0; this.state = 'off'; this.path = []; this.repath = 0; this.target = null; this.lastSeen = -99; this.lastSeenPos = null; this.stride = 0; this.speed = 0; this.voiceT = 0; this.searchT = 0; this.visible = false; this.root.visible = false; this.bang = null; this.mode = '';
     this.sawHide = false; this.spotT = -99;
   }
@@ -191,7 +191,7 @@ class Monster {
     let range = lit ? this.sight : this.sightDark; if (Player.crouch > 0.5 && !lit) range *= 0.7; if (Game.chase > 0.5) range *= 1.6;
     if (d > range) return false;
     if (d > 2.2) { const fwdX = Math.sin(this.yaw), fwdZ = Math.cos(this.yaw); const dot = (dx * fwdX + dz * fwdZ) / d; if (dot < Math.cos(this.fov / 2)) return false; }
-    if (Player.hiddenUnderTable && d > 1.6 && Game.chase < 0.5) return false;
+    if (Player.hiddenUnderTable && d > 1.3 && !this.sawHide) return false;
     return losCheck(this.pos.x, this.pos.z, P.x, P.z);
   }
   goto(x, z) { this.target = { x, z }; this.repath = 0; }
@@ -204,21 +204,24 @@ class Monster {
     const sees = this.canSee();
     if (sees) { if (this.state !== 'chase') { this.onSpot(); } this.lastSeen = Game.t; this.lastSeenPos = { x: P.x, z: P.z }; }
     // player hid while being watched
-    if (Player.hidden && Game.t - this.lastSeen < 1.1 && Player.hideT > Game.t - 1.2) this.sawHide = true;
-    if (!Player.hidden) this.sawHide = false;
+    if ((Player.hidden || Player.hiddenUnderTable) && Game.t - this.lastSeen < 0.9 && (Player.hideT > Game.t - 1.0 || (Player.hiddenUnderTable && !this.prevUnder))) this.sawHide = true;
+    if (!Player.hidden && !Player.hiddenUnderTable) this.sawHide = false;
+    this.prevUnder = Player.hiddenUnderTable;
     if (this.state === 'chase') {
       if (sees || this.sawHide) { this.goto(P.x, P.z); }
       else if (Game.t - this.lastSeen > this.lose) { this.state = 'search'; this.searchT = Game.t + 9; this.goto(this.lastSeenPos.x, this.lastSeenPos.z); Game.onLost && Game.onLost(this); }
       else if (this.lastSeenPos) this.goto(this.lastSeenPos.x, this.lastSeenPos.z);
-      if (Game.t > this.voiceT) { this.voiceT = Game.t + rnd(7, 11); this.taunt(); }
+      if (Game.t > this.voiceT) { this.voiceT = Game.t + rnd(4.5, 7); this.taunt(true); }
     } else {
       for (const n of Game.noises) { const nd = Math.hypot(n.x - this.pos.x, n.z - this.pos.z); if (nd < n.r * this.hear) { this.state = 'investigate'; this.goto(n.x, n.z); break; } }
       if (this.state === 'investigate' && !this.path.length && this.repath > 0.2) { this.state = 'search'; this.searchT = Game.t + 6; }
       if (this.state === 'search') { if (Game.t > this.searchT) this.state = 'wander'; else if (!this.path.length && this.repath > 0.5) { const c = this.randomCellNear(this.lastSeenPos || this.pos, 3); if (c) this.goto(c[0], c[1]); } }
       if (this.state === 'wander' && !this.path.length && this.repath > 0.5) { const c = this.wanderCell(); if (c) this.goto(c[0], c[1]); }
     }
+    // mumbling to himself: you can hear him coming before you see him
+    if (this.state !== 'chase' && d < 18 && Game.t > (this.idleT || 0)) { this.idleT = Game.t + rnd(7, 12); const L = VOICE_LINES[this.type].idle; if (L) voice(pick(L), this.pos.x, this.pos.z, { vol: 0.9 }); }
     // catch
-    if (d < this.catchR && (!Player.hidden || this.sawHide) && Game.state === 'play' && !Player.safe) { Game.die(this); return; }
+    if (d < this.catchR && ((!Player.hidden && !Player.hiddenUnderTable) || this.sawHide) && Game.state === 'play' && !Player.safe) { Game.die(this); return; }
     const spd = this.state === 'chase' ? this.run : this.state === 'investigate' ? this.walk * 1.7 : this.walk;
     if (this.state === 'chase' && sees && d < 6 && !this.bang) { this.path = [[P.x, P.z]]; this.repath = 0.25; }
     this.followPath(dt, spd);
@@ -227,7 +230,7 @@ class Monster {
     Game.stress = Math.max(Game.stress, clamp(1 - d / 14, 0, 1) * (this.state === 'chase' ? 1 : 0.6));
   }
   onSpot() { this.state = 'chase'; this.spotT = Game.t; this.voiceT = Game.t + 0.4; if (Game.t - (this.lastScream || -99) > 20) { this.lastScream = Game.t; SFX.stinger(); } }
-  taunt() { const v = VOICE_LINES[this.type]; const lines = [v.taunt1, v.taunt2, v.quiz || v.lure].filter(Boolean); voice(pick(lines), this.pos.x, this.pos.z); }
+  taunt(chase) { const v = VOICE_LINES[this.type]; const lines = chase && v.chase ? v.chase : [v.taunt1, v.taunt2, v.quiz || v.lure].filter(Boolean); if (!voice(pick(lines), this.pos.x, this.pos.z) && Math.random() < 0.5) SFX.laughSynth(this.pos.x, this.pos.z, this.type === 'amal' ? 1.5 : this.type === 'minhaj' ? 0.85 : 0.75); }
   followPath(dt, spd) {
     const G = World.grid; this.repath += dt;
     if (this.target && (this.repath > (this.state === 'chase' ? 0.35 : 1.2) || !this.path.length)) {

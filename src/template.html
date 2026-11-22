@@ -85,13 +85,25 @@ body.playing #hud{display:block}
 #stam.on{opacity:1}#stamF{height:100%;width:100%;background:#efe3b4;border-radius:2px}#stam.ex #stamF{background:#d0412f}
 #hidden{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:14px;letter-spacing:.2em;color:#9fe0b2;opacity:0;transition:opacity .3s;text-shadow:0 0 6px #000}
 #hidden.on{opacity:.9}
-#inv{position:absolute;left:16px;bottom:max(22px,env(safe-area-inset-bottom));display:flex;gap:6px}
-#inv .item{background:var(--ui);border:1px solid #3a3420;border-radius:3px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px}
+#inv{position:absolute;left:16px;bottom:max(22px,env(safe-area-inset-bottom));display:flex;gap:6px;direction:ltr;pointer-events:auto}
+#inv .item{position:relative;background:var(--ui);border:1px solid #3a3420;border-radius:4px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:21px;transition:transform .12s,border-color .12s;cursor:pointer}
+#inv .item b{position:absolute;top:2px;left:4px;font-size:10px;color:#a59a74;font-family:Arial,sans-serif}
+#inv .item.sel{border-color:var(--y);transform:translateY(-4px);box-shadow:0 0 0 1px var(--y),0 6px 16px rgba(0,0,0,.5)}
+#bag{z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
+.bagBox{width:min(560px,calc(100% - 32px));background:#1d180e;border:1px solid #4a3f22;border-radius:6px;padding:18px;box-shadow:0 30px 80px #000;background-image:linear-gradient(180deg,rgba(255,255,255,.03),transparent)}
+.bagBox h3{margin:0 0 4px;color:var(--y);font-size:22px}.bagBox .hint{font-size:13px;color:#8d8263;margin-bottom:12px}
+#bagGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.bagItem{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:right;background:#14110a;border:1px solid #3a3420;border-radius:4px;padding:10px;color:#f3ead0}
+.bagItem.sel{border-color:var(--y);background:#2a2412}.bagItem .bi{font-size:28px}.bagItem .bn{font-weight:700;font-size:14px}.bagItem .bd{font-size:12px;color:#a59a74;line-height:1.5}
+.bind{background:#221f13;border:1px solid #3a3420;color:#f3ead0;min-width:84px;padding:7px 10px;border-radius:3px;font-family:Arial,sans-serif;font-size:14px}.bind.wait{border-color:var(--y);color:var(--y)}
+#binds .row{margin:8px 0}
 #timer{position:absolute;left:50%;top:26%;transform:translateX(-50%);font-size:64px;font-weight:900;color:#ffd36b;text-shadow:0 0 20px rgba(255,160,0,.6);opacity:0}
 #timer.on{opacity:1;animation:pulse .5s infinite alternate}
 @keyframes pulse{to{transform:translateX(-50%) scale(1.12)}}
 #slats{position:fixed;inset:0;z-index:9;pointer-events:none;display:none;background:repeating-linear-gradient(180deg,#050403 0 7.2vh,transparent 7.2vh 10.5vh);box-shadow:inset 0 0 18vh 6vh #000}
 #slats.on{display:block}
+#undert{position:fixed;inset:0;z-index:9;pointer-events:none;opacity:0;transition:opacity .35s;background:linear-gradient(180deg,#0b0805 0,#1a120a 18%,rgba(20,14,8,.85) 24%,transparent 34%),linear-gradient(90deg,rgba(0,0,0,.85) 0,transparent 9%,transparent 91%,rgba(0,0,0,.85) 100%)}
+#undert.on{opacity:1}
 #levelcard{position:fixed;inset:0;z-index:11;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0}
 #levelcard.on{animation:card 4.2s ease forwards}
 @keyframes card{0%{opacity:0;letter-spacing:.3em}12%{opacity:1}75%{opacity:1}100%{opacity:0;letter-spacing:.02em}}
@@ -148,6 +160,7 @@ body.touch.playing #touch{display:block}
 #tUse{left:max(26px,env(safe-area-inset-left));bottom:110px;width:76px;height:76px;font-size:15px}
 #tJump{left:118px;bottom:40px}#tLight{left:max(26px,env(safe-area-inset-left));bottom:30px}
 #tRun{right:180px;bottom:120px}#tCrouch{right:180px;bottom:40px}
+#tBag{left:118px;bottom:122px}
 #tPause{left:50%;transform:translateX(-50%);top:max(10px,env(safe-area-inset-top));width:44px;height:44px;font-size:16px}
 #rotate{position:fixed;inset:0;z-index:98;background:#0b0a06;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-size:18px;text-align:center;padding:24px}
 #rotate.on{display:flex}#rotate .ph{font-size:56px;animation:rot 2s infinite}
@@ -192,16 +205,7 @@ body.touch.playing #touch{display:block}
 
 <div id="howto" class="ov panelWrap"><div class="panel">
   <h2>طريقة اللعب</h2>
-  <div class="keys" id="howKeys">
-    <kbd>W A S D</kbd><span>المشي</span>
-    <kbd>Shift</kbd><span>ركض (يتعب… إلا وقت المطاردة)</span>
-    <kbd>C</kbd><span>انحناء (تمشي بهدوء وتدخل تحت الطاولات)</span>
-    <kbd>Space</kbd><span>قفز</span>
-    <kbd>E</kbd><span>تفاعل: ورقة، باب، خزانة، أغراض</span>
-    <kbd>F</kbd><span>كشاف الجوال</span>
-    <kbd>Q</kbd><span>طلّ من الخزانة</span>
-    <kbd>Esc</kbd><span>إيقاف</span>
-  </div>
+  <div class="keys" id="howKeys"></div>
   <div class="keys" id="howTouch">
     <kbd>يمين</kbd><span>عصا الحركة</span>
     <kbd>يسار</kbd><span>اسحب للنظر</span>
@@ -217,6 +221,9 @@ body.touch.playing #touch{display:block}
   <div class="row"><span>حساسية النظر</span><input type="range" id="sens" min="0.3" max="2.5" step="0.05"></div>
   <div class="row"><span>الصوت</span><input type="range" id="vol" min="0" max="1.2" step="0.05"></div>
   <div class="row"><span>ترجمة كلام الدكاترة</span><input type="checkbox" id="subsT"></div>
+  <h2 style="font-size:19px;margin:20px 0 6px">الأزرار <small style="font-size:12px;color:#8d8263;font-weight:400">اضغط على الزر وبعدين اضغط الزر الجديد</small></h2>
+  <div id="binds"></div>
+  <button class="btn" id="bindReset" style="width:100%;margin-top:8px;font-size:14px">رجّع الأزرار الافتراضية</button>
   <button class="btn back">رجوع</button>
 </div></div>
 
@@ -238,19 +245,20 @@ body.touch.playing #touch{display:block}
   <div id="stam"><div id="stamF"></div></div>
   <div id="hidden">مختبئ</div><div id="inv"></div><div id="timer"></div>
 </div>
-<div id="slats"></div>
+<div id="slats"></div><div id="undert"></div>
 <div id="levelcard"><div id="lcLevel"></div><div id="lcTitle"></div><div id="lcSub"></div></div>
 <div id="intro"></div>
 
+<div id="bag" class="ov"><div class="bagBox"><h3>🎒 الشنطة</h3><div class="hint">اختر الشيء اللي تبيه بيدك (أو اضغط رقمه). تقفل بنفس زر الشنطة أو Esc.</div><div id="bagGrid"></div></div></div>
 <div id="note" class="ov"><div class="paper"><div id="noteHead"></div><div id="noteText"></div><div id="noteSig"></div><button id="noteClose">تمام، فهمت</button></div></div>
 <div id="keypad" class="ov"><div class="kp"><div id="kpTitle"></div><div id="kpHint"></div><div id="kpDisp"></div><div id="kpKeys"></div><div class="kpRow"><button id="kpClear">مسح</button><button id="kpClose">إغلاق</button></div></div></div>
 <div id="terminal" class="ov"><div class="term"><div id="termOut"></div><form id="termForm"><input id="termIn" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="password"><button type="submit">ENTER</button></form><button id="termClose">إغلاق</button></div></div>
 
 <div id="dead" class="ov"><div id="deadWho"></div><div id="deadTip"></div><div class="menu"><button class="btn main" id="retryBtn">حاول مرة ثانية</button><button class="btn" id="btnDMenu">القائمة</button></div></div>
-<div id="ending" class="ov"><h2>🎓 نجوت</h2><p>طلعت من الباك رومز… ولقيت نفسك في حفل التخرج. د. مجاهد يصفق، د. منهاج يصوّر، ود. أمل تقول: «شفت؟ ما كان صعب.»</p><div id="endStats"></div><div class="menu"><button class="btn main" id="btnAgain">العب من جديد</button><button class="btn" id="btnEMenu">القائمة</button></div></div>
+<div id="ending" class="ov"><h2>🎓 نجوت</h2><p>طلعت من الباك رومز… ولقيت نفسك في حفل التخرج. د. مجاهد يصفق، د. منهاج يصوّر، ود. أمل تقول: «شفت؟ ما كان صعب.»</p><p id="endTwist" style="color:#f0d9a8"></p><div id="endStats"></div><div class="menu"><button class="btn main" id="btnAgain">العب من جديد</button><button class="btn" id="btnEMenu">القائمة</button></div></div>
 
 <div id="touch"><div id="lookpad"></div><div id="joy"><div id="knob"></div></div>
-  <button class="tb" id="tUse">تفاعل</button><button class="tb" id="tLight">🔦</button><button class="tb" id="tJump">قفز</button><button class="tb" id="tRun">ركض</button><button class="tb" id="tCrouch">انحناء</button><button class="tb" id="tPause">⏸</button></div>
+  <button class="tb" id="tBag">🎒</button><button class="tb" id="tUse">تفاعل</button><button class="tb" id="tLight">🔦</button><button class="tb" id="tJump">قفز</button><button class="tb" id="tRun">ركض</button><button class="tb" id="tCrouch">انحناء</button><button class="tb" id="tPause">⏸</button></div>
 <div id="rotate"><div class="ph">📱</div>لف الجوال بالعرض عشان تلعب</div>
 
 <script>/*__DATA__*/</script>

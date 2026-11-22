@@ -6,7 +6,7 @@ function applyQuality(q) { const Q = QUAL[q] || QUAL.med; quality.scale = Q.scal
 function showScreen(id) { ['title', 'levels', 'settings', 'howto', 'pause', 'dead', 'ending'].forEach(s => $(s).classList.toggle('on', s === id)); }
 function newRun(levelId) {
   audioInit();
-  Game.deaths = 0; Game.notesRead = 0; Game.startT = Game.t; Game.inv = {}; Game.updateInv();
+  Game.deaths = 0; Game.notesRead = 0; Game.startT = Game.t; Game.inv = {}; Game.held = 'phone'; Game.lore = {}; Game.updateInv();
   showScreen(null); document.body.classList.add('playing');
   $('intro').classList.add('on');
   setTimeout(() => { startLevel(levelId || 'L0'); }, 900);
@@ -52,8 +52,22 @@ function bindUI() {
   $('termClose').addEventListener('click', () => closeTerminal());
   $('termIn').addEventListener('keydown', e => e.stopPropagation());
   $('termIn').addEventListener('keyup', e => e.stopPropagation());
+  renderBinds();
+  $('bindReset').addEventListener('click', () => { Input.binds = Object.assign({}, BIND_DEF); store.set('binds', {}); renderBinds(); });
+  $('bag').addEventListener('click', e => { if (e.target.id === 'bag') toggleBag(false); });
   if (isTouch) document.body.classList.add('touch');
   $('howKeys').style.display = isTouch ? 'none' : ''; $('howTouch').style.display = isTouch ? '' : 'none';
+}
+function renderBinds() {
+  const box = $('binds'); box.innerHTML = '';
+  Object.keys(BIND_DEF).forEach(a => {
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<span>${BIND_NAMES[a]}</span><button class="bind" type="button">${keyLabel(Input.binds[a])}</button>`;
+    const b = row.querySelector('button');
+    b.onclick = () => { b.classList.add('wait'); b.textContent = 'اضغط…'; Input.capture = code => { Input.capture = null; b.classList.remove('wait'); if (code) { for (const k in Input.binds) if (Input.binds[k] === code && k !== a) Input.binds[k] = Input.binds[a]; Input.binds[a] = code; const diff = {}; for (const k in Input.binds) if (Input.binds[k] !== BIND_DEF[k]) diff[k] = Input.binds[k]; store.set('binds', diff); } renderBinds(); }; };
+    box.appendChild(row);
+  });
+  const hk = $('howKeys'); if (hk) hk.innerHTML = Object.keys(BIND_DEF).map(a => `<kbd>${a === 'fwd' ? [Input.binds.fwd, Input.binds.left, Input.binds.back, Input.binds.right].map(keyLabel).join(' ') : keyLabel(Input.binds[a])}</kbd><span>${{ fwd: 'المشي', run: 'ركض (يتعب… إلا وقت المطاردة)', crouch: 'انحناء: تمشي بهدوء وتدخل تحت الطاولات', jump: 'قفز', use: 'تفاعل: ورقة، باب، خزانة، طاولة', light: 'كشاف الجوال', bag: 'الشنطة: شوف وش معك واختار وش بيدك', peek: 'طلّ من الخزانة' }[a] || ''}</span>`).filter((x, i) => !['back', 'left', 'right'].includes(Object.keys(BIND_DEF)[i])).join('') + '<kbd>1 – 9</kbd><span>امسك الغرض اللي برقمه</span><kbd>Esc</kbd><span>إيقاف</span>';
 }
 async function boot() {
   const bar = $('loadBar'), st = $('loadTxt');

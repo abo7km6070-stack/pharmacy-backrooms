@@ -15,6 +15,24 @@ const NOTES = {
   pw: { head: 'تذكير للفنيين', sig: '— إدارة الكلية', text: 'كلمة سر بوابة المعامل:<br><b>أول دواء نبدأ فيه لمريض السكري النوع الثاني</b><br>(اكتبه بالإنجليزي، بدون مسافات)<br><br><i>ملاحظة: لا تنسون البوث التوعوي يوم الأحد 🙂</i>' },
   fake: { head: 'ورقة داخل الغرفة', sig: '— د. م', text: '<b>مو هنا 😂</b><br><br>المخرج الحقيقي ما عليه لوحة خضرا.' }
 };
+const LORE = {
+  l0a: { head: 'ورقة معلّقة بشريط لاصق', sig: '— ع', text: 'يوم ١<br>كنت أذاكر <b>PHP 363</b> في الردهة ونمت على الطاولة.<br>صحيت والكلية فاضية… والأنوار ما تطفي أبد.<br>سمعت أحد يقول «يا زول» من بعيد. ضحكت. ما كان فيه أحد.' },
+  l0b: { head: 'ورقة مدعوسة على الموكيت', sig: '— ع', text: 'يوم ٤ (أظن)<br>لاحظت إن د. مجاهد <b>يبطّئ عند الزوايا</b>. وإذا سكّرت الباب يوقف يدقه.<br>عدّيت الخطوط على الجدار: <b>٣٦</b>. مين كتبها؟' },
+  l1a: { head: 'ورقة على زجاج سيارة', sig: '— ع', text: 'د. منهاج يعرف اسمي.<br>نادى «عبدالملك» من آخر الموقف… <b>وأنا ما قلت اسمي لأحد هنا.</b><br>لا ترد على الصوت. لا ترد على الصوت. لا ترد.' },
+  l2a: { head: 'ورقة مبلولة على أنبوب', sig: '— ع', text: 'الخط صار يشبه خطي أكثر وأكثر.<br>إذا وصلت غرفة الصيانة… <b>اقرأ الورقة اللي تحت الطاولة.</b>' },
+  l2b: { head: 'ورقة تحت الطاولة', sig: '— عبدالملك', text: 'لا تزعل مني.<br>الأوراق كلها <b>بخطي</b>… وأنت تقرأها بخطك.<br><b>أنا أنت.</b> هذي المحاولة رقم <b>٣٧</b>.<br>الدكاترة ما كانوا يبون يسقطونك… كانوا يبونك تصحى.<br>المرة الجاية: <b>لا تنام في المحاضرة.</b>' }
+};
+function graffiti(G, cx, cy, pref, text, opt = {}) {
+  const sd = wallSide(G, cx, cy, pref); if (!sd) return;
+  const p = onWall(G, cx, cy, sd, 1.4, opt.off || 0);
+  const t = signTex({ w: 512, h: 160, bg: 'rgba(0,0,0,0)', age: false, extra: (g, w, h) => { g.clearRect(0, 0, w, h); g.save(); g.translate(w / 2, h / 2); g.rotate(rnd(-0.06, 0.06)); g.font = `700 ${opt.size || 58}px "Aref Ruqaa", Tajawal, serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = 'rtl'; g.fillStyle = opt.color || 'rgba(120,10,8,0.85)'; g.shadowColor = g.fillStyle; g.shadowBlur = 6; g.fillText(text, 0, 0); for (let i = 0; i < 6; i++) { g.fillRect(rnd(-150, 150), rnd(10, 40), 3, rnd(10, 45)); } g.restore(); } });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.56), new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 1, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+  m.position.set(p.x, opt.y || 1.5, p.z); m.rotation.y = p.ry; World.group.add(m); return m;
+}
+function loreNote(G, cx, cy, pref, key, after) {
+  const sd = wallSide(G, cx, cy, pref); if (!sd) return;
+  return noteOnWall(G, cx, cy, sd, LORE[key], () => { Game.lore = Game.lore || {}; Game.lore[key] = 1; after && after(); });
+}
 const LEVELS = {};
 function later(fn, ms) { const seq = Game.seq; return setTimeout(() => { if (Game.seq === seq && Game.level) fn(); }, ms); }
 function hasWall(G, cx, cy, sd) { const e = sd === 'n' ? G.h[G.hi(cx, cy)] : sd === 's' ? G.h[G.hi(cx, cy + 1)] : sd === 'w' ? G.v[G.vi(cx, cy)] : G.v[G.vi(cx + 1, cy)]; return e === 1; }
@@ -103,7 +121,8 @@ function deskMesh(x, z, ry = 0) {
   for (const [a, b] of [[-0.75, -0.3], [0.75, -0.3], [-0.75, 0.3], [0.75, 0.3]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.76, 0.04), leg); l.position.set(a, 0.38, b); g.add(l); }
   const modesty = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 0.02), top); modesty.position.set(0, 0.52, -0.33); g.add(modesty);
   g.position.set(x, 0, z); g.rotation.y = ry; World.group.add(g);
-  World.hides.push({ type: 'table', x, z, hw: ry ? 0.45 : 0.8, hd: ry ? 0.8 : 0.45 });
+  const H = { type: 'table', x, z, hw: ry ? 0.45 : 0.8, hd: ry ? 0.8 : 0.45 }; World.hides.push(H);
+  addInteract({ pos: { x, y: 0.7, z }, r: 1.7, cond: () => !Player.hidden, label: 'ادخل تحت الطاولة', use: () => hideIn(H) });
   // top is a low ceiling (can't stand under), legs block lightly
   return g;
 }
@@ -122,9 +141,9 @@ function shelfMesh(x, z, ry, h = 2.6, w = 2.2) {
 LEVELS.L0 = {
   id: 'L0', order: 0, card: ['LEVEL 0', 'الردهة', 'كلية الصيدلة · جامعة القصيم'], surface: 'carpet', vig: 1.0, sat: 0.92,
   build() {
-    const S = 2.8, W = 16, H = 16, WH = 2.95; World.wallH = WH; World.wallMat = style.L0.wall;
+    const S = 3.4, W = 16, H = 16, WH = 3.0; World.wallH = WH; World.wallMat = style.L0.wall;
     const G = makeGrid(W, H, S); World.grid = G; const rand = mulberry(7319);
-    backroomsMaze(G, rand, 0.36);
+    backroomsMaze(G, rand, 0.3);
     // special rooms
     G.open(0, 0, 2, 2); G.room(0, 0, 2, 2); G.setEdge(2, 1, 3, 1, 0); G.setEdge(1, 2, 1, 3, 0); // spawn
     G.open(5, 9, 9, 13); G.room(5, 9, 9, 13); G.setEdge(7, 8, 7, 9, 0); // lecture hall (door added below)
@@ -133,7 +152,7 @@ LEVELS.L0 = {
     G.open(13, 6, 15, 8); G.room(13, 6, 15, 8); G.setEdge(14, 5, 14, 6, 0); // red-door antechamber
     G.locked = (x, y, nx, ny) => false;
     connectAll(G, rand);
-    setupEnv({ fog: 0x8a7d4e, fogD: 0.034, sky: 0xfff2c0, ground: 0x6b5a32, amb: 0.85, exposure: 1.05, bloom: 0.75, bloomT: 0.78, hum: 0.55, drone: 0.18, tint: [1.02, 1, 0.92], grain: 0.07 });
+    setupEnv({ fog: 0x8a7d4e, fogD: 0.042, sky: 0xfff2c0, ground: 0x6b5a32, amb: 0.32, exposure: 1.0, bloom: 0.75, bloomT: 0.78, hum: 0.55, drone: 0.18, tint: [1.02, 1, 0.92], grain: 0.07 });
     // doors
     const lecDoor = addDoor(G, 9, 11, 10, 11, { name: 'باب القاعة' }); G.setEdge(9, 11, 10, 11, 2);
     addDoor(G, 8, 13, 8, 14, {});
@@ -147,8 +166,8 @@ LEVELS.L0 = {
     // pillars
     for (let i = 0; i < 26; i++) { const x = 1 + ((rand() * (W - 1)) | 0), y = 1 + ((rand() * (H - 1)) | 0); if (x > 11 && y > 11) continue; if (x <= 3 && y <= 3) continue; if (x >= 5 && x <= 10 && y >= 9 && y <= 14) continue; const px = x * S, pz = y * S; prop(boxGeo(0.5, WH, 0.5, 0, WH / 2, 0, 2, WH), style.L0.wall, px, 0, pz); }
     // fixtures
-    const fx = fixturesGrid(G, 2, 0, (x, y) => !(x === 9 && y === 2));
-    buildFixtures(fx, WH, { intensity: 2.4, power: 5.5, range: 8.5, lightColor: 0xfff0c0 });
+    const fx = fixturesGrid(G, 2, 0, (x, y) => !(x === 9 && y === 2)).map(f => Object.assign(f, { on: Math.random() > 0.3, flick: Math.random() < 0.3 ? rnd(0.15, 0.6) : 0 }));
+    buildFixtures(fx, WH, { intensity: 2.2, power: 3.4, range: 7.5, lightColor: 0xfff0c0 });
     initLightPool(8);
     // posters / signage
     const logo = window.IMG_LOGO ? imgTex(window.IMG_LOGO) : null;
@@ -165,6 +184,8 @@ LEVELS.L0 = {
     // fake EXIT sign above the closet door
     const ex = signTex({ w: 256, h: 96, bg: '#0a8a3a', age: false, lines: [{ t: 'مخرج  EXIT', y: 64, s: 46, c: '#fff' }] });
     const exm = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.26), new THREE.MeshStandardMaterial({ map: ex, emissive: 0xffffff, emissiveMap: ex, emissiveIntensity: 1.6 })); exm.position.set(fake.ex, 2.45, fake.ez + 0.11); World.group.add(exm);
+    graffiti(G, 8, 2, 'n', 'لا تصدّق اللوحة الخضرا'); graffiti(G, 4, 9, 'e', 'يسمعك لما تركض'); graffiti(G, 13, 5, 'n', '|||| |||| |||| ٣٦', { color: 'rgba(25,18,10,0.8)', size: 46 });
+    loreNote(G, 3, 2, 'e', 'l0a'); loreNote(G, 11, 6, 's', 'l0b');
     noteOnWall(G, 9, 2, 'n', NOTES.fake, () => { if (!Game.flags.fakeLaugh) { Game.flags.fakeLaugh = 1; later(() => SFX.laughSynth(Player.pos.x + 8, Player.pos.z - 4, 0.75), 600); later(() => voice('m2', Player.pos.x + 10, Player.pos.z + 6), 1500); } });
     // lecture hall desks (hiding)
     for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) deskMesh(G.cx(5) + 1.4 + c * 4.6, G.cz(10) + r * 2.2, 0);
@@ -209,7 +230,7 @@ LEVELS.L0 = {
     noteOnWall(G, 0, 1, 'w', NOTES.L0, () => { if (!Game.flags.obj0) { Game.flags.obj0 = 1; UI.objective('اجمع قطع السلّم (٠/٤)', 'متفرقة بالممرات'); } });
     Game.flags.l0start = Game.t;
     // the doctor
-    const mj = new Monster('mujahid', { walk: 1.25, run: 5.75, sight: 18, sightDark: 5, doors: 'bang', catchR: 0.95 }); Game.monsters.push(mj);
+    const mj = new Monster('mujahid', { walk: 1.2, run: 4.85, sight: 18, sightDark: 5, doors: 'bang', catchR: 0.95 }); Game.monsters.push(mj);
     mj.place(G.cx(14), G.cz(2));
     LEVELS.L0.cp = null;
   },
@@ -275,7 +296,7 @@ function buildPitHall(G, S, WH) {
   const hint = signTex({ w: 512, h: 128, bg: '#c8b35a', age: true, lines: [{ t: 'خطوة خطوة… ولا تطالع تحت', y: 82, s: 44, c: '#3a2a10', f: 'Aref Ruqaa, serif' }] });
   poster(hint, x0 + 1.4, 2.2, z0 - half + 0.12, 0, 1.6, 0.4);
   // supports for the hall's light fixtures in the global list need instancing: rebuild fixtures mesh
-  buildFixtures(World.fixtures, WH, { intensity: 2.4, power: 5.5, range: 8.5, lightColor: 0xfff0c0 });
+  buildFixtures(World.fixtures, WH, { intensity: 2.2, power: 3.4, range: 7.5, lightColor: 0xfff0c0 });
 }
 function updatePitHall(dt) {
   const H = World.pitHall; if (!H) return; const P = Player.pos;
@@ -286,19 +307,19 @@ function updatePitHall(dt) {
 LEVELS.L0B = {
   id: 'L0B', order: 0, card: ['LEVEL 0 · ‎B', 'القبو', 'طحت… بس ما زال فيه مخرج'], surface: 'carpet', vig: 1.35, sat: 0.7,
   build() {
-    const S = 2.6, W = 11, H = 11, WH = 2.6; World.wallH = WH; World.wallMat = style.L0B.wall;
+    const S = 3.2, W = 11, H = 11, WH = 2.7; World.wallH = WH; World.wallMat = style.L0B.wall;
     const G = makeGrid(W, H, S); World.grid = G; const rand = mulberry(Math.random() * 1e9 | 0);
     // perfect maze (DFS) for long corridors
     for (let i = 0; i < G.h.length; i++) G.h[i] = 1; for (let i = 0; i < G.v.length; i++) G.v[i] = 1;
     const seen = new Uint8Array(W * H), st = [[0, 0]]; seen[0] = 1;
     while (st.length) { const [x, y] = st[st.length - 1]; const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [x + dx, y + dy]).filter(([a, b]) => G.inside(a, b) && !seen[b * W + a]); if (!nb.length) { st.pop(); continue; } const [nx, ny] = nb[(rand() * nb.length) | 0]; G.setEdge(x, y, nx, ny, 0); seen[ny * W + nx] = 1; st.push([nx, ny]); }
-    for (let i = 0; i < 14; i++) { const x = (rand() * (W - 1)) | 0, y = (rand() * (H - 1)) | 0; G.setEdge(x, y, x + 1, y, 0); }
+    for (let i = 0; i < 34; i++) { const x = (rand() * (W - 1)) | 0, y = (rand() * (H - 1)) | 0; if (rand() < 0.5) G.setEdge(x, y, x + 1, y, 0); else G.setEdge(x, y, x, y + 1, 0); }
     G.border();
-    setupEnv({ fog: 0x1a150b, fogD: 0.06, sky: 0x8a7a48, ground: 0x1a140c, amb: 0.75, exposure: 1.3, bloom: 0.7, hum: 0.25, drone: 0.55, tint: [1, 0.95, 0.85], grain: 0.1 });
+    setupEnv({ fog: 0x1a150b, fogD: 0.06, sky: 0x8a7a48, ground: 0x1a140c, amb: 0.3, exposure: 1.15, bloom: 0.7, hum: 0.25, drone: 0.55, tint: [1, 0.95, 0.85], grain: 0.1 });
     buildGridWalls(G, style.L0B.wall, WH);
     buildGridFloor(G, style.L0B.floor, style.L0B.ceil, WH, 2.4, { ceilUV: 1.2 });
     const fx = fixturesGrid(G, 2, 1).map(f => Object.assign(f, { flick: rnd(0.25, 0.6), on: Math.random() > 0.25 }));
-    buildFixtures(fx, WH, { intensity: 1.8, power: 5, range: 7.5, lightColor: 0xffd8a0 }); initLightPool(8);
+    buildFixtures(fx, WH, { intensity: 1.8, power: 3.2, range: 6.5, lightColor: 0xffd8a0 }); initLightPool(8);
     // path from start to exit → arrows on walls
     const path = bfsPath(G, 0, 0, W - 1, H - 1, true) || [];
     const arrowTex = signTex({ w: 256, h: 256, bg: 'rgba(0,0,0,0)', age: false, extra: (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = '#0a0806'; g.beginPath(); g.moveTo(30, 100); g.lineTo(150, 100); g.lineTo(150, 50); g.lineTo(230, 128); g.lineTo(150, 206); g.lineTo(150, 156); g.lineTo(30, 156); g.fill(); } });
@@ -315,9 +336,10 @@ LEVELS.L0B = {
     const glow = new THREE.PointLight(0xbfe0ff, 1.4, 6); glow.position.set(ex, 2, ez - 0.5); World.group.add(glow);
     addInteract({ pos: { x: ex, y: 1.4, z: ez }, r: 2.2, label: 'اطلع الدرج وادخل الفتحة', use: () => noclipTo('L1') });
     Player.pos.set(G.cx(0), 0, G.cz(0)); Player.yaw = Math.PI;
+    graffiti(G, 3, 5, 'n', 'ما فيه رجعة… بس فيه طلعة'); graffiti(G, 7, 3, 'w', 'هو أسرع هنا', { color: 'rgba(15,10,6,0.85)' });
     noteOnWall(G, 0, 0, 'n', NOTES.L0B, () => UI.objective('اتبع الأسهم السودا', 'الدرج في آخر القبو'));
     UI.msg('…سقطت', 1800);
-    const mj = new Monster('mujahid', { walk: 1.6, run: 6.0, sight: 14, sightDark: 7, doors: 'open', catchR: 0.95 }); Game.monsters.push(mj); mj.place(G.cx(W - 2), G.cz(2));
+    const mj = new Monster('mujahid', { walk: 1.4, run: 4.95, sight: 14, sightDark: 7, doors: 'open', catchR: 0.95 }); Game.monsters.push(mj); mj.place(G.cx(W - 2), G.cz(2));
     Game.flags.l0bT = Game.t;
     // lockers to hide
     [[3, 3], [6, 7], [8, 2]].forEach(([cx, cy]) => { for (const sd of ['n', 's', 'w', 'e']) { const blocked = sd === 'n' ? G.h[G.hi(cx, cy)] : sd === 's' ? G.h[G.hi(cx, cy + 1)] : sd === 'w' ? G.v[G.vi(cx, cy)] : G.v[G.vi(cx + 1, cy)]; if (blocked === 1) { const p = onWall(G, cx, cy, sd, 0); addLockerHide(p.x + Math.sin(p.ry) * 0.25, p.z + Math.cos(p.ry) * 0.25, p.ry, 0x4a5458); break; } } });
@@ -377,7 +399,7 @@ LEVELS.L1 = {
     const rooms = [[6, 0], [9, 0], [12, 0], [6, 9], [9, 9], [12, 9]];
     rooms.forEach(([x, y]) => { G.room(x, y, x + 1, y); });
     G.noMonster = new Uint8Array(W * H);
-    setupEnv({ fog: 0x1a1d20, fogD: 0.045, sky: 0x8a96a2, ground: 0x15171a, amb: 0.32, exposure: 1.1, bloom: 0.6, hum: 0.25, drone: 0.4, wind: 0.5, tint: [0.95, 1, 1.03], grain: 0.08 });
+    setupEnv({ fog: 0x1a1d20, fogD: 0.045, sky: 0x8a96a2, ground: 0x15171a, amb: 0.16, exposure: 1.0, bloom: 0.6, hum: 0.25, drone: 0.4, wind: 0.5, tint: [0.95, 1, 1.03], grain: 0.08 });
     G.v[G.vi(W, 4)] = 0; // opening behind the exit gate (the cage sits outside the grid)
     const carDoor = addDoor(G, 1, 4, 1, 5, { tex: TEX.metalDoor, window: true, trim: 0x444444, width: 1.1 });
     const roomDoors = rooms.map(([x, y]) => addDoor(G, x, y, x, y === 0 ? 1 : 8, { tex: TEX.metalDoor, trim: 0x444444 }));
@@ -389,7 +411,7 @@ LEVELS.L1 = {
     for (let x = 5.6; x < 13.5; x += 0.65) { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 4.2), lineM); l.rotation.x = -Math.PI / 2; l.position.set(x * S, 0.01, 2.6 * S); World.group.add(l); const l2 = l.clone(); l2.position.z = 7.4 * S; World.group.add(l2); }
     // fixtures: zone A brighter, zone B flickery tubes
     const fx = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!G.floor[y * W + x]) continue; if ((x + y) % 2) continue; fx.push({ x: G.cx(x), z: G.cz(y), flick: x > 4 ? rnd(0.1, 0.45) : 0.05, on: Math.random() > 0.1, zone: x > 4 ? 'B' : 'A' }); }
-    buildFixtures(fx, WH, { intensity: 2.2, power: 6.5, range: 11, lightColor: 0xd8ecff, color: 0xeaf4ff, w: 1.6, d: 0.2 }); initLightPool(8);
+    buildFixtures(fx, WH, { intensity: 2.2, power: 4.2, range: 9, lightColor: 0xd8ecff, color: 0xeaf4ff, w: 1.6, d: 0.2 }); initLightPool(8);
     // cars in the car room (random color order) → code
     const order = CAR_COLORS.slice(0, 5).sort(() => Math.random() - 0.5).slice(0, 4); Game.flags.code = order.map(c => c.id);
     order.forEach((c, i) => { const car = carMesh(c.hex); car.position.set(12.2 - i * 3.0, 0, 7 * S); car.rotation.y = Math.PI; World.group.add(car); addBoxCollider(car.position.x - 0.95, car.position.z - 2.25, car.position.x + 0.95, car.position.z + 2.25, 0, 1.4); });
@@ -412,7 +434,7 @@ LEVELS.L1 = {
     const slotX = 5 * S + 0.2, slotZs = [3.0 * S, 3.6 * S, 5.4 * S, 6.0 * S];
     const slotMs = slotZs.map((z, i) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.24, 0.18), stdMat({ color: 0x333333, metalness: 0.7, emissive: 0x220000 })); m.position.set(slotX, 1.3, z); World.group.add(m); return m; });
     poster(signTex({ w: 512, h: 128, bg: '#2a2a2a', lines: [{ t: 'لوحة البوابة · ٤ مفاتيح', y: 80, s: 40, c: '#ffd36b' }] }), slotX + 0.02, 2.2, 3.3 * S, Math.PI / 2, 1.8, 0.45);
-    slotZs.forEach((z, i) => addInteract({ pos: { x: slotX + 0.3, y: 1.3, z }, r: 1.8, cond: () => Game.flags.ridden && !Game.flags.gateOpen, label: () => Game.flags.slots[i] === 2 ? 'ملفوف ✓' : Game.flags.slots[i] === 1 ? 'لف المفتاح' : (Game.flags.keys > Game.flags.slots.filter(s => s).length ? 'ركّب مفتاح' : 'فتحة مفتاح فاضية'), use: () => keySlot(i, slotMs) }));
+    slotZs.forEach((z, i) => addInteract({ pos: { x: slotX + 0.3, y: 1.3, z }, r: 1.8, cond: () => Game.flags.ridden && !Game.flags.gateOpen, label: () => Game.flags.slots[i] === 2 ? 'ملفوف ✓' : Game.flags.slots[i] === 1 ? 'لف المفتاح' : (Game.flags.keys > Game.flags.slots.filter(s => s).length ? (/^k\d$/.test(Game.held) ? 'ركّب المفتاح' : 'امسك مفتاح وركّبه') : 'فتحة مفتاح فاضية'), use: () => keySlot(i, slotMs) }));
     // lockers in side rooms: 4 contain keys, 2 are hiding spots
     const keyRooms = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5);
     rooms.forEach(([x, y], ri) => {
@@ -435,8 +457,10 @@ LEVELS.L1 = {
     addTrigger({ x: exitCage.x + 0.2, z: exitCage.z, w: 0.9, d: 0.9, cond: () => Game.flags.gateOpen, fire: () => { exitCage.target = 0; SFX.elevatorDing(); later(() => { SFX.elevatorMotor(3); Game.shake(0.4); }, 900); later(() => noclipTo('L2'), 2600); } });
     // spawn
     Player.pos.set(1.5 * S, 0, 1.4 * S); Player.yaw = Math.PI;
+    graffiti(G, 3, 2, 'n', 'لا ترد على الصوت', { color: 'rgba(160,20,10,0.8)' }); graffiti(G, 8, 5, 'n', '٣٧', { size: 110, color: 'rgba(20,20,20,0.75)' });
+    loreNote(G, 2, 7, 's', 'l1a');
     noteOnWall(G, 0, 1, 'w', NOTES.L1, () => { if (!Game.flags.o1) { Game.flags.o1 = 1; UI.objective('شغّل المصعد', 'الرمز = ألوان السيارات ورا الباب أبو شباك'); } });
-    const mh = new Monster('minhaj', { walk: 1.5, run: 6.3, sight: 20, sightDark: 6, doors: 'none', catchR: 1.05, fov: 2.2 }); Game.monsters.push(mh); mh.place(12.5 * S, 4.5 * S, -Math.PI / 2); mh.customUpdate = () => mh.state === 'lure';
+    const mh = new Monster('minhaj', { walk: 1.35, run: 4.95, sight: 20, sightDark: 6, doors: 'none', catchR: 1.05, fov: 2.2 }); Game.monsters.push(mh); mh.place(12.5 * S, 4.5 * S, -Math.PI / 2); mh.customUpdate = () => mh.state === 'lure';
     LEVELS.L1.cpB = false;
   },
   update(dt) {
@@ -480,7 +504,8 @@ function rideElevator(eA, eB) {
 function carAlarmTroll() { const F = Game.flags; F.alarm = 1; const c = F.alarmCar.position; later(() => { SFX.carAlarm(c.x, c.z); Game.noise(c.x, c.z, 40); UI.msg('…سيارة؟! ليش انطلق إنذارها؟', 2400); }, 1200); }
 function keySlot(i, slotMs) {
   const F = Game.flags; F.slotMs = slotMs; const placed = F.slots.filter(s => s).length;
-  if (F.slots[i] === 0) { if (F.keys > placed) { F.slots[i] = 1; SFX.unlock(); slotMs[i].material.emissive.set(0x333300); delete Game.inv['k' + (placed + 1)]; Game.updateInv(); if (F.slots.every(s => s)) UI.objective('لف المفاتيح الأربعة خلال ٥ ثواني!', 'شغّل أول واحد… واركض للباقي'); } else { SFX.locked(); UI.msg('تحتاج مفتاح.', 1500); } return; }
+  if (F.slots[i] === 0) { if (F.keys > placed && !/^k\d$/.test(Game.held)) { SFX.locked(); UI.msg('امسك مفتاح بيدك أول (رقمه من الشنطة)', 2200); return; }
+    if (F.keys > placed) { const used = Game.held; F.slots[i] = 1; SFX.unlock(); slotMs[i].material.emissive.set(0x333300); delete Game.inv[used]; Game.updateInv(); if (F.slots.every(s => s)) UI.objective('لف المفاتيح الأربعة خلال ٥ ثواني!', 'شغّل أول واحد… واركض للباقي'); } else { SFX.locked(); UI.msg('تحتاج مفتاح.', 1500); } return; }
   if (F.slots[i] === 1) {
     if (!F.slots.every(s => s)) { UI.msg('ركّب الأربعة أول.', 1800); return; }
     F.slots[i] = 2; SFX.clank(slotMs[i].position.x, slotMs[i].position.z); slotMs[i].material.emissive.set(0x00aa33); Game.noise(Player.pos.x, Player.pos.z, 10);
@@ -493,14 +518,14 @@ function openGate() {
   F.blackout = true; F.alarmBlink = Game.t; World.fixColor.set(0xff2a1a); World.fixtures.forEach(f => { f.flick = 0; });
   setBed('hum', 0); SFX.lightsOff(); R.P.tint.value.set(1.1, 0.85, 0.85);
   const g = F.gate; World.updaters.push(dt => { if (g.position.y < World.wallH * 1.5) g.position.y += dt * 0.9; }); later(() => { F.gateCol.off = true; }, 2600);
-  const mh = Game.monsters[0]; mh.run = 6.6; later(() => { mh.state = 'chase'; mh.lastSeen = Game.t; mh.lastSeenPos = { x: Player.pos.x, z: Player.pos.z }; voice('n3', mh.pos.x, mh.pos.z, { force: true }); }, 1500);
+  const mh = Game.monsters[0]; mh.run = 5.15; later(() => { mh.state = 'chase'; mh.lastSeen = Game.t; mh.lastSeenPos = { x: Player.pos.x, z: Player.pos.z }; voice('n3', mh.pos.x, mh.pos.z, { force: true }); }, 1500);
 }
 
 /* ============================== LEVEL 2: pipe dreams ============================== */
 LEVELS.L2 = {
   id: 'L2', order: 2, card: ['LEVEL 2', 'ممرات الأنابيب', 'تحت المعامل… والنور ما يدوم'], surface: 'metal', vig: 1.25, sat: 0.85,
   build() {
-    const S = 2.6, W = 14, H = 9, WH = 2.7; World.wallH = WH; World.wallMat = style.L2.wall;
+    const S = 3.2, W = 14, H = 9, WH = 2.8; World.wallH = WH; World.wallMat = style.L2.wall;
     const G = makeGrid(W, H, S); World.grid = G; const rand = mulberry(9001);
     for (let i = 0; i < G.h.length; i++) G.h[i] = 1; for (let i = 0; i < G.v.length; i++) G.v[i] = 1;
     // hand-carved route: start (0,4) → junction (2,4) sign. FUN → north branch to party room (2..4, 0..1). STATION → south & east maze → maintenance room (6..7,7..8) → gate at (9,4) → final straight (9..13, 4) → party door at east end.
@@ -511,9 +536,11 @@ LEVELS.L2 = {
     G.open(5, 7, 7, 8); // maintenance room
     carve([[4, 6], [4, 7], [4, 8], [3, 8], [2, 8], [1, 8], [1, 7], [0, 7], [0, 6]]); // side loop (steam + hiding)
     carve([[8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [13, 4]]);
+    // extra loops so there is always a second way round when she comes
+    carve([[6, 4], [7, 4], [8, 4]]); carve([[8, 6], [8, 7], [7, 7]]); carve([[2, 6], [2, 7], [2, 8]]); carve([[0, 4], [0, 5], [0, 6]]);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => G.inside(x + dx, y + dy) && G.edge(x, y, x + dx, y + dy) !== 1); G.floor[y * W + x] = n ? 1 : 0; }
     G.border();
-    setupEnv({ fog: 0x0b0706, fogD: 0.07, sky: 0x6a3a28, ground: 0x0a0605, amb: 0.2, exposure: 1.25, bloom: 0.85, bloomT: 0.72, hum: 0.08, drone: 0.5, pipe: 0.7, tint: [1.05, 0.92, 0.85], grain: 0.1 });
+    setupEnv({ fog: 0x0b0706, fogD: 0.07, sky: 0x6a3a28, ground: 0x0a0605, amb: 0.12, exposure: 1.15, bloom: 0.85, bloomT: 0.72, hum: 0.08, drone: 0.5, pipe: 0.7, tint: [1.05, 0.92, 0.85], grain: 0.1 });
     const gateDoor = addDoor(G, 8, 4, 9, 4, { tex: TEX.metalDoor, locked: true, trim: 0x333333, lockedMsg: 'البوابة تبي كلمة سر من الجهاز اللي جنبها.' });
     addDoor(G, 6, 6, 6, 7, { tex: TEX.metalDoor, trim: 0x333333 });
     buildGridWalls(G, style.L2.wall, WH, 0.2, 2.6);
@@ -554,8 +581,11 @@ LEVELS.L2 = {
     ventCells.forEach(([cx, cy, ax, kind], i) => addVent(G.cx(cx), G.cz(cy), ax, kind, i * 0.9));
     // spawn
     Player.pos.set(G.cx(0), 0, G.cz(4)); Player.yaw = -Math.PI / 2;
+    graffiti(G, 4, 3, 'w', 'المرح كذبة', { color: 'rgba(20,10,6,0.85)' }); graffiti(G, 8, 2, 'n', 'اثبت لما يطفي', { color: 'rgba(230,220,200,0.6)' }); graffiti(G, 11, 4, 'n', 'لا توقف', { color: 'rgba(170,20,10,0.85)' });
+    loreNote(G, 6, 2, 'n', 'l2a');
+    { const H2 = World.hides.find(h => h.type === 'table' && Math.abs(h.x - (G.cx(5) + 1)) < 0.1); const pz = G.cz(7) + 0.4; const paper = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.3), new THREE.MeshStandardMaterial({ color: 0xe9e0c8, roughness: 1, side: THREE.DoubleSide })); paper.rotation.x = Math.PI / 2; paper.position.set(G.cx(5) + 1.1, 0.745, pz); World.group.add(paper); addInteract({ pos: { x: G.cx(5) + 1.1, y: 0.4, z: pz }, r: 1.6, once: true, cond: () => Player.under || (Player.hidden && Player.hidden.type === 'table'), underOK: true, label: 'اقرأ الورقة الملصوقة تحت الطاولة', use: () => openNote(Object.assign({}, LORE.l2b, { after: () => { Game.lore = Game.lore || {}; Game.lore.l2b = 1; Game.glitch = 0.6; later(() => Game.glitch = 0, 900); SFX.whisper && SFX.whisper(Player.pos.x, Player.pos.z); } })) }); }
     noteOnWall(G, 0, 4, 'n', NOTES.L2, () => { if (!Game.flags.o2) { Game.flags.o2 = 1; UI.objective('لقّ غرفة الصيانة', 'اتبع لوحة «المحطة»'); } });
-    const am = new Monster('amal', { walk: 1.3, run: 6.1, sight: 9, sightDark: 9, doors: 'open', catchR: 1.0 }); Game.monsters.push(am); am.place(-50, -50);
+    const am = new Monster('amal', { walk: 1.25, run: 4.9, sight: 9, sightDark: 9, doors: 'open', catchR: 1.0 }); Game.monsters.push(am); am.place(-50, -50);
     am.customUpdate = (dt, d) => amalUpdate(am, dt, d);
     Game.flags.cycle = Game.t + 12; Game.flags.dark = false; World.killY = -50;
   },
@@ -665,10 +695,10 @@ function startFinal(fromCP) {
   const F = Game.flags, G = World.grid; F.chaseCP = true; F.chase = true; Game.state = 'play';
   if (fromCP) { Player.pos.set(G.cx(8) - 0.8, 0, G.cz(4)); Player.yaw = -Math.PI / 2; Player.hidden = false; }
   World.fixColor.set(0xff2020); Game.level.unlimitedStamina = true;
-  const am = Game.monsters[0]; am.doc.horror = false; am.doc.faceM.emissiveIntensity = 0.6; am.place(G.cx(6), G.cz(3), Math.PI / 2); am.root.visible = true; am.state = 'chase'; am.lastSeen = Game.t; am.lastSeenPos = { x: Player.pos.x, z: Player.pos.z }; am.run = 5.25; am.sight = 40; am.lose = 99;
+  const am = Game.monsters[0]; am.doc.horror = false; am.doc.faceM.emissiveIntensity = 0.6; am.place(G.cx(6), G.cz(3), Math.PI / 2); am.root.visible = true; am.state = 'chase'; am.lastSeen = Game.t; am.lastSeenPos = { x: Player.pos.x, z: Player.pos.z }; am.run = 4.8; am.sight = 40; am.lose = 99;
   later(() => { voice('a3', am.pos.x, am.pos.z, { force: true }); SFX.stinger(); }, 600);
   // she gets faster if you slow down
-  am.customUpdate = (dt, d) => { am.run = Player.moveAmt < 4 ? 6.6 : 5.25; return false; };
+  am.customUpdate = (dt, d) => { am.run = Player.moveAmt < 3.4 ? 5.4 : 4.8; return false; };
   // obstacles in the straight: crates
   if (!F.crates) { F.crates = 1; [[10, -0.6], [11, 0.7], [12, -0.4]].forEach(([cx, off]) => prop(new THREE.BoxGeometry(0.9, 0.9, 0.9), stdMat({ color: 0x6a4a2a, map: TEX.door }), G.cx(cx), 0.45, G.cz(4) + off)); }
   // the party door at the end
@@ -699,5 +729,8 @@ function showEnding() {
   Game.state = 'ending'; unlockPointer(); partyStop(); SFX.success();
   const secs = Math.floor(Game.t - Game.startT), mm = Math.floor(secs / 60), ss = secs % 60;
   $('endStats').textContent = `الوقت ${ar(mm)}:${ar(String(ss).padStart(2, '0'))} · الموتات ${ar(Game.deaths)} · الأوراق ${ar(Game.notesRead)}`;
+  const knew = Game.lore && Game.lore.l2b;
+  $('endTwist').innerHTML = knew ? 'بس قبل لا تفرح… الشهادة مكتوب عليها: <b>«المحاولة رقم ٣٧»</b>.' : 'لقيت ورقة في جيبك بخطك: <b>«المحاولة رقم ٣٧… لا تنام في المحاضرة»</b>.';
   UI.show('ending', true); store.set('won', true);
+  later(() => { SFX.knock(Player.pos.x + 3, Player.pos.z, 3); $('endTwist').innerHTML += '<br><span style="color:#ff6a5a">…طق طق طق</span>'; R.P.glitch.value = 0.5; }, 6500);
 }

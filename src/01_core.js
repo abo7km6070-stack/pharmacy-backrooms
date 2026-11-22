@@ -82,7 +82,7 @@ function initRenderer() {
 }
 function resize() {
   const w = innerWidth, h = innerHeight;
-  const pr = Math.min(devicePixelRatio || 1, 2) * quality.scale;
+  const pr = Math.min(devicePixelRatio || 1, 1.5) * quality.scale;
   R.renderer.setPixelRatio(pr);
   R.renderer.setSize(w, h, false);
   R.composer.setPixelRatio(pr);
@@ -94,20 +94,35 @@ function resize() {
 }
 
 /* ---------------- input ---------------- */
-const Input = { keys: {}, lookX: 0, lookY: 0, joy: { x: 0, y: 0 }, tRun: false, tCrouch: false, locked: false, sens: store.get('sens', 1) };
+const BIND_DEF = { fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', run: 'ShiftLeft', crouch: 'KeyZ', jump: 'Space', use: 'KeyE', light: 'KeyF', bag: 'Tab', peek: 'KeyQ' };
+const BIND_NAMES = { fwd: 'قدّام', back: 'ورا', left: 'يسار', right: 'يمين', run: 'ركض', crouch: 'انحناء', jump: 'قفز', use: 'تفاعل', light: 'كشاف الجوال', bag: 'الشنطة', peek: 'طلّ من الخزانة' };
+const Input = { keys: {}, lookX: 0, lookY: 0, joy: { x: 0, y: 0 }, tRun: false, tCrouch: false, locked: false, sens: store.get('sens', 1), binds: Object.assign({}, BIND_DEF, store.get('binds', {})), lastMove: 0 };
+const ALT_KEYS = { fwd: 'ArrowUp', back: 'ArrowDown' };
+function down(a) { return !!(Input.keys[Input.binds[a]] || (ALT_KEYS[a] && Input.keys[ALT_KEYS[a]])); }
+function actionOf(code) { for (const a in Input.binds) if (Input.binds[a] === code) return a; if (code === 'ArrowUp') return 'fwd'; return null; }
+function keyLabel(code) { if (!code) return '—'; if (code.startsWith('Key')) return code.slice(3); if (code.startsWith('Digit')) return code.slice(5); return ({ Space: 'Space', ShiftLeft: 'Shift', ShiftRight: 'R-Shift', ControlLeft: 'Ctrl', ControlRight: 'R-Ctrl', AltLeft: 'Alt', Tab: 'Tab', CapsLock: 'Caps', Backquote: '`', Mouse0: 'M1', Mouse2: 'M2' })[code] || code; }
 function initInput() {
   addEventListener('keydown', e => {
+    if (Input.capture) { e.preventDefault(); if (e.code !== 'Escape') Input.capture(e.code); else Input.capture(null); return; }
+    if (e.ctrlKey && Game.state === 'play') e.preventDefault(); // Ctrl+W etc. must not close the tab mid-game
     Input.keys[e.code] = true;
     if (Game.onKey) Game.onKey(e.code, e);
-    if (['Space', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.code)) e.preventDefault();
+    if (['Space', 'ArrowUp', 'ArrowDown', 'Tab'].includes(e.code) || (Game.state === 'play' && Object.values(Input.binds).includes(e.code))) e.preventDefault();
   });
   addEventListener('keyup', e => { Input.keys[e.code] = false; });
+  addEventListener('mousedown', e => { const c = 'Mouse' + e.button; if (Input.capture) { e.preventDefault(); Input.capture(c); return; } if (Game.state !== 'play' || !Input.locked) return; Input.keys[c] = true; if (Game.onKey) Game.onKey(c, e); });
+  addEventListener('mouseup', e => { Input.keys['Mouse' + e.button] = false; });
+  addEventListener('contextmenu', e => { if (Game.state === 'play') e.preventDefault(); });
   addEventListener('blur', () => { Input.keys = {}; });
   document.addEventListener('mousemove', e => {
-    if (document.pointerLockElement === $('cv')) { Input.lookX += e.movementX; Input.lookY += e.movementY; }
+    if (document.pointerLockElement !== $('cv')) return;
+    const now = performance.now(); let mx = e.movementX, my = e.movementY;
+    // Chrome/Windows sometimes reports a huge bogus jump right after locking or on high-rate mice: drop it
+    if (now - (Input.lockT || 0) < 120 || Math.abs(mx) > 260 || Math.abs(my) > 260) return;
+    Input.lookX += mx; Input.lookY += my;
   });
   document.addEventListener('pointerlockchange', () => {
-    Input.locked = document.pointerLockElement === $('cv');
+    Input.locked = document.pointerLockElement === $('cv'); Input.lockT = performance.now();
     if (!Input.locked && Game.state === 'play' && !isTouch && !Game.suppressPause) Game.pause(true);
     Game.suppressPause = false;
   });
@@ -116,7 +131,7 @@ function initInput() {
 }
 function lockPointer() {
   if (isTouch) return;
-  try { const p = $('cv').requestPointerLock(); if (p && p.catch) p.catch(() => { }); } catch (e) { }
+  try { const c = $('cv'); let p; try { p = c.requestPointerLock({ unadjustedMovement: true }); } catch (e) { p = null; } if (p && p.catch) p.catch(() => { try { const q = c.requestPointerLock(); if (q && q.catch) q.catch(() => { }); } catch (e) { } }); else if (!p) c.requestPointerLock(); } catch (e) { }
 }
 function unlockPointer() { Game.suppressPause = true; try { document.exitPointerLock(); } catch (e) { } }
 function initTouch() {
@@ -139,6 +154,7 @@ function initTouch() {
   tb('tRun', () => { Input.tRun = !Input.tRun; $('tRun').classList.toggle('act', Input.tRun); });
   tb('tCrouch', () => { Input.tCrouch = !Input.tCrouch; $('tCrouch').classList.toggle('act', Input.tCrouch); });
   tb('tPause', () => Game.pause(true));
+  tb('tBag', () => toggleBag(true));
 }
 
 /* ---------------- UI helpers ---------------- */
