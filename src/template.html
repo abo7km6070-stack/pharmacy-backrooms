@@ -83,6 +83,10 @@ body.playing #hud{display:block}
 #toastFrom{font-weight:700;font-size:15px;margin-top:3px}#toastText{font-size:14px;color:#ddd;margin-top:2px}
 #stam{position:absolute;left:50%;bottom:max(26px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(240px,40vw);height:4px;background:rgba(255,255,255,.12);border-radius:2px;opacity:0;transition:opacity .4s}
 #stam.on{opacity:1}#stamF{height:100%;width:100%;background:#efe3b4;border-radius:2px}#stam.ex #stamF{background:#d0412f}
+#meters{position:absolute;right:16px;bottom:max(22px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px;direction:ltr}
+.mt{display:flex;align-items:center;gap:6px;font-size:14px;opacity:.85}.mt span{width:90px;height:5px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden}.mt b{display:block;height:100%;width:100%;background:#efe3b4;transition:width .3s}
+#san b{background:#9fb8ff}.mt.low b{background:#e0442f}.mt.low{animation:pulse .6s infinite alternate}
+body.touch #meters{bottom:auto;top:70px}
 #hidden{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:14px;letter-spacing:.2em;color:#9fe0b2;opacity:0;transition:opacity .3s;text-shadow:0 0 6px #000}
 #hidden.on{opacity:.9}
 #inv{position:absolute;left:16px;bottom:max(22px,env(safe-area-inset-bottom));display:flex;gap:6px;direction:ltr;pointer-events:auto}
@@ -243,6 +247,7 @@ body.touch.playing #touch{display:block}
   <div id="prompt"></div><div id="msg"></div><div id="subs"></div>
   <div id="toast"><div class="app"><span>💬 رسائل</span><span>الآن</span></div><div id="toastFrom"></div><div id="toastText"></div></div>
   <div id="stam"><div id="stamF"></div></div>
+  <div id="meters"><div class="mt" id="bat" title="بطارية الكشاف"><i>🔦</i><span><b id="batF"></b></span></div><div class="mt" id="san" title="العقل"><i>🧠</i><span><b id="sanF"></b></span></div></div>
   <div id="hidden">مختبئ</div><div id="inv"></div><div id="timer"></div>
 </div>
 <div id="slats"></div><div id="undert"></div>

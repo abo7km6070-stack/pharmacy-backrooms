@@ -94,8 +94,8 @@ function resize() {
 }
 
 /* ---------------- input ---------------- */
-const BIND_DEF = { fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', run: 'ShiftLeft', crouch: 'KeyZ', jump: 'Space', use: 'KeyE', light: 'KeyF', bag: 'Tab', peek: 'KeyQ' };
-const BIND_NAMES = { fwd: 'قدّام', back: 'ورا', left: 'يسار', right: 'يمين', run: 'ركض', crouch: 'انحناء', jump: 'قفز', use: 'تفاعل', light: 'كشاف الجوال', bag: 'الشنطة', peek: 'طلّ من الخزانة' };
+const BIND_DEF = { fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', run: 'ShiftLeft', crouch: 'KeyZ', jump: 'Space', use: 'KeyE', light: 'KeyF', bag: 'Tab', peek: 'KeyQ', item: 'Mouse0' };
+const BIND_NAMES = { fwd: 'قدّام', back: 'ورا', left: 'يسار', right: 'يمين', run: 'ركض', crouch: 'انحناء', jump: 'قفز', use: 'تفاعل', light: 'كشاف الجوال', bag: 'الشنطة', peek: 'طلّ من الخزانة', item: 'استخدم الغرض اللي بيدك' };
 const Input = { keys: {}, lookX: 0, lookY: 0, joy: { x: 0, y: 0 }, tRun: false, tCrouch: false, locked: false, sens: store.get('sens', 1), binds: Object.assign({}, BIND_DEF, store.get('binds', {})), lastMove: 0 };
 const ALT_KEYS = { fwd: 'ArrowUp', back: 'ArrowDown' };
 function down(a) { return !!(Input.keys[Input.binds[a]] || (ALT_KEYS[a] && Input.keys[ALT_KEYS[a]])); }

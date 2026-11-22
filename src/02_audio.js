@@ -154,6 +154,7 @@ const SFX = {
   carAlarm(x, z) { at(x, z, (g, t) => { for (let i = 0; i < 16; i++) { tone(g, t + i * 0.25, 'square', i % 2 ? 1400 : 950, 0, 0.22, 0.12, 0.01); } }, 1.4); },
   pipeBang(x, z) { at(x, z, (g, t) => { tone(g, t, 'sine', 60, 38, 0.5, 1); [233, 377, 611].forEach(f => tone(g, t, 'square', f, f * 0.95, 1.2, 0.04, 0.002)); noise(g, t, 0.4, 'lowpass', 500, 0.7, 0.8, 0.002); }, 1.4); },
   radioStatic(on) { if (!A.ready) return; if (!A.statG) { A.statG = A.ctx.createGain(); A.statG.gain.value = 0; const f = A.ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2600; f.Q.value = 1.1; loopSrc(A.white).connect(f); f.connect(A.statG); A.statG.connect(A.body); } A.statG.gain.setTargetAtTime(on, A.ctx.currentTime, 0.05); },
+  mbreath(x, z, type, hard) { at(x, z, (g, t) => { const f = type === 'amal' ? 900 : type === 'minhaj' ? 520 : 380; noise(g, t, hard ? 0.5 : 0.8, 'bandpass', f, 1.4, hard ? 0.5 : 0.28, 0.12, f * 0.6); if (hard) { tone(g, t + 0.05, 'sawtooth', type === 'amal' ? 160 : 70, type === 'amal' ? 120 : 52, 0.45, 0.12, 0.05); } }, 1.2, 1.5); },
   laughSynth(x, z, pitch = 1) { // fallback creepy laugh when no voice file
     at(x, z, (g, t) => {
       for (let i = 0; i < 6; i++) {
@@ -180,12 +181,12 @@ const SUBS = {
   m6: 'د. مجاهد: <b>يا زُول، الحاجة دي ساهلة خالِص… مالَك خايِف؟ أطلَع بَس.</b>',
   m7: 'د. مجاهد: <b>أمم… الميتفورمين… خُمُسْمِيّة مِلّي… الزُّول البيعرِف الجُرعة بيَطلَع.</b>',
   m8: 'د. مجاهد: <b>أَجري أَجري يا زُول! أنا جايّك هَسّي!</b>',
-  n1: 'د. منهاج: <b><bdi dir="ltr">Hello?… Abdulmalik? Is that you, my friend? Come here…</bdi></b>',
-  n2: 'د. منهاج: <b><bdi dir="ltr">Where are you going, my dear? Submission is closed!</bdi></b>',
-  n3: 'د. منهاج: <b><bdi dir="ltr">You cannot hide from attendance… I am counting.</bdi></b>',
-  n4: 'د. منهاج: <b><bdi dir="ltr">Zero marks! Zero!</bdi></b>',
-  n5: 'د. منهاج: <b><bdi dir="ltr">Where is everybody, yaar? Roll number thirty-seven… absent. Absent again.</bdi></b>',
-  n6: 'د. منهاج: <b><bdi dir="ltr">Run, run, my dear! I am very tall, I can see you everywhere!</bdi></b>',
+  n1: 'د. منهاج: <b><bdi dir="ltr">Hello?… Hello, beta? Is that you? Come here, come… I won\'t take attendance.</bdi></b>',
+  n2: 'د. منهاج: <b><bdi dir="ltr">Where are you going, my dear? The submission portal is closed, no?</bdi></b>',
+  n3: 'د. منهاج: <b><bdi dir="ltr">You cannot hide from attendance… I am counting. One… two… three…</bdi></b>',
+  n4: 'د. منهاج: <b><bdi dir="ltr">Got you! Zero marks, my friend. Zero!</bdi></b>',
+  n5: 'د. منهاج: <b><bdi dir="ltr">Hmm… where is everybody? So many students absent today… very bad, very bad.</bdi></b>',
+  n6: 'د. منهاج: <b><bdi dir="ltr">Run, run! I am very tall, yaar… I can see you everywhere!</bdi></b>',
   a1: 'د. أمل: <b>يا حَبيبي… فين رايِح؟ تَعال، ما راح أسَوّي لَك شي.</b>',
   a2: 'د. أمل: <b>النّور طِفي… وأنا مَرّة أحِبّ الضَّلْمة.</b>',
   a3: 'د. أمل: <b>تَعال وَرّيني الرّيبورت حَقّك يا قَلبي… لا تِخاف.</b>',

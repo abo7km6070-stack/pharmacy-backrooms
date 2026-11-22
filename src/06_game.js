@@ -2,6 +2,7 @@
    player + game loop + shared systems (notes, hiding, death, transitions)
    ===================================================================== */
 const Player = {
+  battery: 1, sanity: 1,
   pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: 0, vy: 0, onGround: true, crouch: 0, stamina: 1, exhausted: false,
   light: false, hidden: false, hideT: -99, hiddenUnderTable: false, bob: 0, bobPh: 0, stepAcc: 0, r: 0.27, sway: 0, swayV: 0, safe: false, frozen: false, moveAmt: 0, peek: false, lastGround: 0,
   eyeY() { if (this.hidden && this.hidden.type === 'table') return this.pos.y + 0.46; const e = this.pos.y + 1.62 - this.crouch * 0.72; return this.under ? Math.min(e, this.pos.y + 0.6) : e; },
@@ -31,7 +32,7 @@ const INV_DESC = { phone: 'اضغط زر الكشاف عشان تشغّل الن
 const INV_ICONS = { phone: '📱', redkey: '🔴', k1: '🗝️', k2: '🗝️', k3: '🗝️', k4: '🗝️', ladder: '🪜' };
 function renderBag() {
   const sl = Game.slots();
-  $('bagGrid').innerHTML = sl.map((k, i) => `<button class="bagItem${k === Game.held ? ' sel' : ''}" data-k="${k}"><span class="bi">${INV_ICONS[k] || '•'}</span><span class="bn">${i + 1} · ${INV_NAMES[k] || k}${k === 'ladder' ? ' ×' + ar(Game.flags.pieces || 0) : ''}</span><span class="bd">${INV_DESC[k] || ''}</span></button>`).join('');
+  $('bagGrid').innerHTML = sl.map((k, i) => `<button class="bagItem${k === Game.held ? ' sel' : ''}" data-k="${k}"><span class="bi">${INV_ICONS[k] || '•'}</span><span class="bn">${i + 1} · ${INV_NAMES[k] || k}${k === 'ladder' ? ' ×' + ar(Game.flags.pieces || 0) : (Game.inv[k] > 1 ? ' ×' + ar(Game.inv[k]) : '')}</span><span class="bd">${INV_DESC[k] || ''}</span></button>`).join('');
   $('bagGrid').querySelectorAll('.bagItem').forEach(b => b.onclick = () => { Game.hold(b.dataset.k); });
 }
 function toggleBag(on) {
@@ -49,7 +50,7 @@ function updateHeldModel() {
 /* flashlight (phone torch) */
 let torch;
 function initTorch() {
-  torch = new THREE.SpotLight(0xfff4e0, 0, 30, 0.5, 0.5, 1.3); torch.position.set(0.18, -0.12, 0.05);
+  torch = new THREE.SpotLight(0xffeccc, 0, 17, 0.42, 0.65, 1.6); torch.position.set(0.18, -0.12, 0.05);
   R.camera.add(torch); torch.target.position.set(0, -0.1, -2); R.camera.add(torch.target);
   // phone held in hand (viewmodel)
   const phone = new THREE.Group();
@@ -80,8 +81,17 @@ function findInteract() {
 }
 function doInteract() { const o = findInteract(); if (!o) return; const r = o.use(o); if (o.once) o.done = true; }
 /* ---------------- hiding ---------------- */
+Game.onHide = function () { // decided once, at the moment you hide: did any doctor actually watch you do it?
+  for (const m of Game.monsters) {
+    if (m.state === 'off' || !m.root.visible) { m.sawHide = false; continue; }
+    const dx = Player.pos.x - m.pos.x, dz = Player.pos.z - m.pos.z, d = Math.hypot(dx, dz), dot = (dx * Math.sin(m.yaw) + dz * Math.cos(m.yaw)) / (d || 1);
+    const los = losCheck(m.pos.x, m.pos.z, Player.pos.x, Player.pos.z);
+    m.sawHide = los && ((m.state === 'chase' && d < 8 && dot > 0.35) || d < 2.2);
+    if (!m.sawHide && m.state === 'chase') { m.state = 'search'; m.searchT = Game.t + rnd(7, 11); m.goto(Player.pos.x + rnd(-3, 3), Player.pos.z + rnd(-3, 3)); }
+  }
+};
 function hideIn(spot) {
-  Player.hidden = spot; Player.hideT = Game.t; Player.preHide = { x: Player.pos.x, z: Player.pos.z };
+  Player.hidden = spot; Player.hideT = Game.t; Player.preHide = { x: Player.pos.x, z: Player.pos.z }; Game.onHide();
   Player.pos.x = spot.x; Player.pos.z = spot.z; if (spot.yaw !== undefined) { Player.yaw = spot.yaw; Player.pitch = 0; }
   if (spot.type === 'table') { Player.pitch = 0.05; spot.out = { x: Player.preHide.x, z: Player.preHide.z }; const dx = Player.preHide.x - spot.x, dz = Player.preHide.z - spot.z; Player.yaw = Math.atan2(-dx, -dz); }
   Player.light = false; if (spot.type === 'table') SFX.step('carpet', false, true); else SFX.doorOpen(spot.x, spot.z); muffle(true);
@@ -192,6 +202,7 @@ function updatePlayer(dt) {
   P.pitch = clamp(P.pitch, -1.45, 1.45);
   if (I.keys.ArrowLeft) P.yaw += dt * 2.2; if (I.keys.ArrowRight) P.yaw -= dt * 2.2;
   if (P.hidden) { P.vel.set(0, 0, 0); P.crouch = lerp(P.crouch, P.hidden.type === 'table' ? 1 : 0.15, dt * 8); P.moveAmt = 0; if (P.hidden.type === 'locker') P.yaw = clamp(P.yaw, P.hidden.yaw - 0.6, P.hidden.yaw + 0.6); if (P.hidden.type === 'table') P.pitch = clamp(P.pitch, -0.5, 0.25); return; }
+  if (P.script) { P.vel.set(0, 0, 0); P.moveAmt = 0; if (P.script(dt) === true) P.script = null; return; }
   if (P.frozen) { P.vel.set(0, 0, 0); P.moveAmt = 0; return; }
   let f = 0, s = 0;
   if (down('fwd')) f += 1; if (down('back')) f -= 1; if (down('right')) s += 1; if (down('left')) s -= 1;
@@ -204,10 +215,10 @@ function updatePlayer(dt) {
   const chasing = Game.chase > 0.6;
   const wantRun = (down('run') || I.tRun) && mag > 0.3 && P.crouch < 0.5;
   if (P.exhausted && P.stamina > 0.35) P.exhausted = false;
-  const run = wantRun && !P.exhausted;
-  if (run && !chasing && !Game.level.unlimitedStamina) { P.stamina -= dt / 6.5; if (P.stamina <= 0) { P.stamina = 0; P.exhausted = true; } }
+  const boosted = Game.t < (P.boostT || 0); const run = wantRun && (!P.exhausted || boosted);
+  if (run && !chasing && !boosted && !Game.level.unlimitedStamina) { P.stamina -= dt / 6.5; if (P.stamina <= 0) { P.stamina = 0; P.exhausted = true; } }
   else P.stamina = Math.min(1, P.stamina + dt * (P.exhausted ? 0.12 : 0.2) * (run ? 0.3 : 1));
-  const spd = (run ? 4.5 : P.crouch > 0.5 ? 1.45 : 2.7) * (Game.level.speedMul || 1);
+  const spd = (run ? 4.5 : P.crouch > 0.5 ? 1.45 : 2.7) * (Game.level.speedMul || 1) * (boosted ? 1.22 : 1) * (P.sanity < 0.25 ? 0.9 : 1);
   const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
   let vx = (-sy * f + cy * s), vz = (-cy * f - sy * s); const l = Math.hypot(vx, vz) || 1; vx = vx / l * spd * mag; vz = vz / l * spd * mag;
   // balance sway on beams
@@ -231,8 +242,10 @@ function updatePlayer(dt) {
     if (P.stepAcc > stride) { P.stepAcc = 0; SFX.step(Game.level.surfaceAt ? Game.level.surfaceAt(P.pos) : Game.level.surface, run, P.crouch > 0.5); if (run) Game.noise(P.pos.x, P.pos.z, 13); else if (P.crouch < 0.5) Game.noise(P.pos.x, P.pos.z, 3.2); }
   }
   P.bobAmp = lerp(P.bobAmp || 0, P.onGround ? Math.min(1, sp / 3) : 0, 1 - Math.exp(-6 * dt)); P.bob = Math.sin(P.bobPh) * P.bobAmp;
-  P.hiddenUnderTable = false;
+  const wasUnder = P.hiddenUnderTable; P.hiddenUnderTable = false;
   for (const h of World.hides) if (h.type === 'table' && P.crouch > 0.7 && Math.abs(P.pos.x - h.x) < h.hw - 0.05 && Math.abs(P.pos.z - h.z) < h.hd - 0.05) P.hiddenUnderTable = true;
+  if (P.hiddenUnderTable && !wasUnder) Game.onHide();
+  updateSurvival(dt);
 }
 function updateCamera(dt) {
   const P = Player, c = R.camera;
@@ -246,7 +259,7 @@ function updateCamera(dt) {
   c.position.set(P.pos.x + rx * bobX + (Math.random() - 0.5) * sh, P.eyeS + bobY + breathe - P.landDip + (Math.random() - 0.5) * sh, P.pos.z + rz * bobX + (Math.random() - 0.5) * sh);
   c.rotation.order = 'YXZ'; c.rotation.y = P.yaw; c.rotation.x = P.pitch + bobY * 0.15; c.rotation.z = (P.sway || 0) * -0.35 - (P.strafe || 0) * 0.011 + Math.cos(P.bobPh) * 0.003 * (P.bobAmp || 0);
   const fovT = 74 + (P.running ? 7 : 0) + clamp(Game.chase, 0, 1) * 3 - (P.hidden ? 6 : 0); if (Math.abs(c.fov - fovT) > 0.05) { c.fov = lerp(c.fov, fovT, 1 - Math.exp(-5 * dt)); c.updateProjectionMatrix(); }
-  const targetI = P.light && !P.hidden ? 46 : 0; torch.intensity = lerp(torch.intensity, targetI * (Game.torchFlicker ? (Math.random() < 0.3 ? 0.2 : 1) : 1), Math.min(1, dt * 18));
+  const lowBat = P.battery < 0.15 && Math.random() < 0.25 * (1 - P.battery / 0.15); const targetI = P.light && !P.hidden && !lowBat ? 17 * (0.55 + 0.45 * Math.min(1, P.battery * 3)) : 0; torch.intensity = lerp(torch.intensity, targetI * (Game.torchFlicker ? (Math.random() < 0.3 ? 0.2 : 1) : 1), Math.min(1, dt * 18));
   Player.phone.position.y = lerp(Player.phone.position.y, -0.2 + bobY * 0.35 - (P.hidden ? 0.3 : 0) - (P.running ? 0.03 : 0), 1 - Math.exp(-12 * dt)); Player.phone.position.x = 0.2 + bobX * 0.4; Player.phone.rotation.z = 0.05 + (P.strafe || 0) * 0.02;
   Player.phoneScr.material.emissiveIntensity = P.light ? 1.2 : 0.4;
   // post-fx response
@@ -271,14 +284,15 @@ function updateTransition(dt) {
 }
 function hudFrame() {
   const P = Player; $('stamF').style.width = (P.stamina * 100) + '%'; $('stam').classList.toggle('on', P.stamina < 0.98); $('stam').classList.toggle('ex', P.exhausted);
-  $('hidden').classList.toggle('on', !!P.hidden || P.hiddenUnderTable); $('undert').classList.toggle('on', (P.hidden && P.hidden.type === 'table') || P.hiddenUnderTable);
+  $('hidden').classList.toggle('on', !!P.hidden || P.hiddenUnderTable); $('batF').style.width = (P.battery * 100) + '%'; $('bat').classList.toggle('low', P.battery < 0.2); $('sanF').style.width = (P.sanity * 100) + '%'; $('san').classList.toggle('low', P.sanity < 0.3); $('undert').classList.toggle('on', (P.hidden && P.hidden.type === 'table') || P.hiddenUnderTable);
 }
 /* ---------------- key handling ---------------- */
 Game.onKey = function (code) {
   const a = actionOf(code);
   if (Game.state === 'play') {
     if (a === 'use') doInteract();
-    else if (a === 'light') { if (!Player.hidden) { Player.light = !Player.light; SFX.click(); if (Player.light) Game.noise(Player.pos.x, Player.pos.z, 2); } }
+    else if (a === 'light') { if (!Player.hidden) { if (!Player.light && Player.battery <= 0.01) { SFX.click(); UI.msg('البطارية خلصت… دوّر على <b>باور بانك</b> 🔋', 2200); return; } Player.light = !Player.light; SFX.click(); if (Player.light) Game.noise(Player.pos.x, Player.pos.z, 2); } }
+    else if (a === 'item') useHeld();
     else if (a === 'jump') { if (Player.onGround && !Player.hidden && Player.crouch < 0.5) { Player.vy = 5.6; Player.onGround = false; Player.pos.y += 0.02; } }
     else if (a === 'bag') toggleBag(true);
     else if (a === 'peek' && Player.hidden) Player.peek = !Player.peek;
@@ -294,3 +308,54 @@ Game.pause = function (on) {
   if (on) { if (Game.state !== 'play') return; Game.state = 'paused'; UI.show('pause', true); unlockPointer(); if (A.ctx) A.ctx.suspend(); }
   else { UI.show('pause', false); Game.state = 'play'; if (A.ctx) A.ctx.resume(); lockPointer(); }
 };
+
+/* ---------------- battery, sanity, consumables ---------------- */
+const ITEMS = {
+  battery: { name: 'باور بانك', icon: '🔋', desc: 'يشحن كشاف الجوال للآخر. امسكه واضغط زر «استخدم».', use() { Player.battery = 1; SFX.beep(1400); UI.msg('الكشاف انشحن 🔋', 1600); return true; } },
+  vitc: { name: 'فوّار فيتامين C', icon: '💊', desc: 'يرجّع لك تركيزك (العقل). إذا نزل عقلك تبدأ تشوف أشياء مو موجودة.', use() { Player.sanity = Math.min(1, Player.sanity + 0.6); SFX.steam(Player.pos.x, Player.pos.z, 0.4); UI.msg('فششش… رجع لك تركيزك 💊', 1800); return true; } },
+  energy: { name: 'عصير طاقة', icon: '🧃', desc: 'يخليك أسرع ويفتح لك الركض بدون تعب لمدة ١٥ ثانية.', use() { Player.boostT = Game.t + 15; Player.stamina = 1; Player.exhausted = false; SFX.success(); UI.msg('⚡ طاقة! أنت أسرع لمدة ١٥ ثانية', 2000); return true; } },
+  redjuice: { name: 'عصير أحمر', icon: '🧉', desc: 'مكتوب عليه بخط اليد: «اشربني».', use() { SFX.steam(Player.pos.x, Player.pos.z, 0.3); UI.msg('…طعمه غريب', 1400); Game.glitch = 0.4; R.P.red.value = 0.6; later(() => { UI.msg('ما تقدر تتنفس…', 1400); Game.shake(1); Game.glitch = 0.9; }, 1300); later(() => { Game.glitch = 0; Game.die(null, 'العصير الأحمر كان فخ. لا تشرب أي شي ما تعرف وش هو… حتى لو كان حاطينه لك تحت النور.'); }, 2800); return true; } }
+};
+Object.keys(ITEMS).forEach(k => { INV_NAMES[k] = ITEMS[k].name; INV_ICONS[k] = ITEMS[k].icon; INV_DESC[k] = ITEMS[k].desc; });
+function useHeld() {
+  const k = Game.held, it = ITEMS[k]; if (!it) { if (k === 'phone') { Game.onKey(Input.binds.light); } return; }
+  if (it.use()) { Game.inv[k] = (Game.inv[k] | 0) - 1; if (Game.inv[k] <= 0) delete Game.inv[k]; Game.updateInv(); }
+}
+function itemMesh(kind) {
+  const g = new THREE.Group();
+  if (kind === 'battery') { const b = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.13, 0.02), stdMat({ color: 0x1b1d22, roughness: 0.4, metalness: 0.4 })); const led = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.006, 0.004), new THREE.MeshStandardMaterial({ color: 0, emissive: 0x30ff70, emissiveIntensity: 2 })); led.position.set(0, 0.04, 0.012); b.add(led); b.rotation.x = -Math.PI / 2; g.add(b); }
+  else if (kind === 'vitc') { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 14), stdMat({ color: 0xf2f2f2, roughness: 0.3 })); const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.03, 14), stdMat({ color: 0xff8a00 })); cap.position.y = 0.09; t.add(cap); t.position.y = 0.075; g.add(t); }
+  else if (kind === 'energy') { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.033, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0x1a8cff, metalness: 0.8, roughness: 0.25, emissive: 0x061a33 })); c.position.y = 0.06; g.add(c); }
+  else if (kind === 'redjuice') { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.17, 14), new THREE.MeshStandardMaterial({ color: 0xb0101a, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.85, emissive: 0x300004 })); b.position.y = 0.085; const n = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.05, 10), b.material); n.position.y = 0.19; g.add(b, n); }
+  return g;
+}
+function spawnItem(kind, x, z, y = 0) {
+  const m = itemMesh(kind); m.position.set(x, y, z); World.group.add(m);
+  const glow = new THREE.PointLight(kind === 'redjuice' ? 0xff3030 : kind === 'battery' ? 0x50ff90 : 0xffd080, kind === 'redjuice' ? 0.9 : 0.35, 2.2); glow.position.set(x, y + 0.4, z); World.group.add(glow);
+  const it = addInteract({ pos: { x, y: y + 0.2, z }, r: 1.8, label: 'خذ ' + ITEMS[kind].name, use: () => { World.group.remove(m); World.group.remove(glow); it.done = true; SFX.pick(); Game.inv[kind] = (Game.inv[kind] | 0) + 1; Game.updateInv(); UI.msg(`أخذت <b>${ITEMS[kind].name}</b> ${ITEMS[kind].icon} — امسكه برقمه واضغط <b>${keyLabel(Input.binds.item)}</b>`, 3000); } });
+  World.updaters.push(dt => { if (!it.done) m.rotation.y += dt * 0.6; });
+  return it;
+}
+function updateSurvival(dt) {
+  const P = Player;
+  if (P.light && !P.hidden) { P.battery = Math.max(0, P.battery - dt / 95); if (P.battery <= 0) { P.light = false; SFX.click(); UI.msg('البطارية خلصت 🔋', 2000); } }
+  // sanity: darkness and doctors wear you down, light and hiding with the door shut calm you
+  const lit = P.inLight(), near = Game.stress;
+  let ds = 0; if (!lit && !P.light) ds -= dt / 150; if (near > 0.3) ds -= dt * near / 55; if (lit) ds += dt / 260;
+  if (Game.level && Game.level.id === 'END') ds = dt;
+  P.sanity = clamp(P.sanity + ds, 0, 1);
+  R.P.wobble.value = Math.max(R.P.wobble.value * 0.95, P.sanity < 0.3 ? (0.3 - P.sanity) * 2.2 : 0);
+  if (P.sanity < 0.35 && Game.t > (P.hallT || 0)) { P.hallT = Game.t + rnd(6, 12); hallucinate(); }
+  if (P.sanity <= 0 && Game.state === 'play') Game.die(null, 'عقلك ما تحمّل الظلمة. اشرب فوّار فيتامين C وابقَ قريب من النور.');
+}
+function hallucinate() {
+  const r = Math.random(), P = Player, a = P.yaw + Math.PI + rnd(-0.8, 0.8);
+  if (r < 0.3) { SFX.whisper(); UI.sub('<i>…أنت ما راح تتخرج…</i>', 2000); }
+  else if (r < 0.55) { for (let i = 0; i < 5; i++) later(() => SFX.mstep(P.pos.x + Math.sin(a) * 4, P.pos.z + Math.cos(a) * 4, true, true), i * 260); }
+  else if (r < 0.8) { const d = Game.monsters[0]; if (d && d.state === 'off') return; const L = VOICE_LINES[d ? d.type : 'mujahid']; voice(pick(L.idle || [L.taunt1]), P.pos.x + Math.sin(a) * 3, P.pos.z + Math.cos(a) * 3, { force: true, rate: 0.8 }); }
+  else { // a phantom doctor at the far end of your view that vanishes when you get close or blink
+    const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); const x = P.pos.x + fx * 9, z = P.pos.z + fz * 9; if (!losCheck(P.pos.x, P.pos.z, x, z)) return;
+    const ph = makeDoctor(pick(['mujahid', 'minhaj', 'amal'])); ph.root.position.set(x, 0, z); ph.root.rotation.y = Math.atan2(-fx, -fz); ph.horror = true; ph.faceM.emissiveIntensity = 2; World.group.add(ph.root);
+    let t = 0; World.updaters.push(function f(dt) { t += dt; const d = Math.hypot(P.pos.x - x, P.pos.z - z); if (t > 1.6 || d < 5) { World.group.remove(ph.root); SFX.stinger(); Game.glitch = 0.5; later(() => Game.glitch = 0, 250); const i = World.updaters.indexOf(f); if (i >= 0) World.updaters.splice(i, 1); } });
+  }
+}

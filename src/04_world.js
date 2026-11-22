@@ -80,7 +80,7 @@ function buildGridWalls(G, mat, wallH, T = 0.18, uvW = 2, opts = {}) {
 function buildGridFloor(G, floorMat, ceilMat, wallH, uv = 2, opts = {}) {
   // per-cell quads: long skinny triangles cause precision artifacts on some GPUs
   const fg = [], cg = [], { W, H, S, ox, oz } = G;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!G.floor[y * W + x]) continue; const cx = ox + (x + 0.5) * S, cz = oz + (y + 0.5) * S; fg.push(planeGeo(S, S, cx, 0, cz, uv, false)); if (ceilMat) cg.push(planeGeo(S, S, cx, wallH, cz, opts.ceilUV || uv, true)); }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!G.floor[y * W + x]) continue; const cx = ox + (x + 0.5) * S, cz = oz + (y + 0.5) * S; fg.push(planeGeo(S, S, cx, 0, cz, uv, false)); if (ceilMat && !(opts.skipCeil && opts.skipCeil(x, y))) cg.push(planeGeo(S, S, cx, wallH, cz, opts.ceilUV || uv, true)); }
   addMerged(fg, floorMat); if (ceilMat) addMerged(cg, ceilMat);
 }
 function planeGeo(w, d, x, y, z, uv, down) {

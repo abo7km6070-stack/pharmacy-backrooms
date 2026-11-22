@@ -6,7 +6,7 @@ function applyQuality(q) { const Q = QUAL[q] || QUAL.med; quality.scale = Q.scal
 function showScreen(id) { ['title', 'levels', 'settings', 'howto', 'pause', 'dead', 'ending'].forEach(s => $(s).classList.toggle('on', s === id)); }
 function newRun(levelId) {
   audioInit();
-  Game.deaths = 0; Game.notesRead = 0; Game.startT = Game.t; Game.inv = {}; Game.held = 'phone'; Game.lore = {}; Game.updateInv();
+  Game.deaths = 0; Game.notesRead = 0; Game.startT = Game.t; Game.inv = {}; Game.held = 'phone'; Game.lore = {}; Player.battery = 1; Player.sanity = 1; Game.updateInv();
   showScreen(null); document.body.classList.add('playing');
   $('intro').classList.add('on');
   setTimeout(() => { startLevel(levelId || 'L0'); }, 900);
