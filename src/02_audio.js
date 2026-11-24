@@ -250,5 +250,5 @@ function audioFrame(dt) {
   const chase = Game.chase;
   A.chaseG.gain.setTargetAtTime(chase * 0.5, A.ctx.currentTime, chase > 0 ? 0.25 : 2.2);
   A.chaseF.frequency.setTargetAtTime(400 + 2800 * chase * clamp(stress, 0, 1), A.ctx.currentTime, 0.3);
-  partyTick(); musicFrame(dt); dreadFrame(dt);
+  partyTick(); musicFrame(dt); dreadFrame(dt); bedFrame();
 }

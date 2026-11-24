@@ -58,3 +58,22 @@ function dreadFrame(dt) {
   let tot = keys.reduce((s, k) => s + DREAD_EVENTS[k].w, 0), r = Math.random() * tot;
   for (const k of keys) { r -= DREAD_EVENTS[k].w; if (r <= 0) { Dread.last = k; try { DREAD_EVENTS[k].fn(); } catch (e) { } break; } }
 }
+/* recorded room-tone beds (CC BY 4.0 "Old Locations" by Canvas Coven), crossfaded so the loop never clicks */
+const Bed = { id: '', srcs: [], next: 0, g: null };
+function bedFrame() {
+  if (!A.ready) return; if (!Bed.g) { Bed.g = A.ctx.createGain(); Bed.g.gain.value = 0; Bed.g.connect(A.amb); }
+  const L = Game.level, want = L && ({ L0: 'amb_l0', L1: 'amb_l1', L2: 'amb_l2' })[L.id], playing = Game.state === 'play' || Game.state === 'bag' || Game.state === 'note' || Game.state === 'ui';
+  const now = A.ctx.currentTime;
+  Bed.g.gain.setTargetAtTime(want && playing ? ({ L0: 0.55, L1: 0.6, L2: 0.6 })[L.id] * (1 - clamp(Game.chase, 0, 1) * 0.6) : 0, now, 1.2);
+  if (want !== Bed.id) { Bed.srcs.forEach(s => { try { s.g.gain.setTargetAtTime(0, now, 1); s.s.stop(now + 5); } catch (e) { } }); Bed.srcs = []; Bed.id = want; Bed.next = 0; }
+  const buf = want && A.voices[want]; if (!buf) return;
+  if (now >= Bed.next - 0.05) { // start a new copy that fades in while the old one fades out
+    const s = A.ctx.createBufferSource(); s.buffer = buf; const g = A.ctx.createGain(); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(1, now + 4); s.connect(g); g.connect(Bed.g);
+    const off = Bed.srcs.length ? 0 : Math.random() * buf.duration * 0.6, len = buf.duration - off; s.start(now, off);
+    g.gain.setValueAtTime(1, now + len - 4); g.gain.linearRampToValueAtTime(0, now + len); s.stop(now + len + 0.1);
+    Bed.srcs.push({ s, g }); if (Bed.srcs.length > 3) Bed.srcs.shift(); Bed.next = now + len - 4;
+  }
+}
+/* the doctors' "wrong" presence: distorted entity sounds ("Entity sounds by juanjo_sound") */
+function entitySound(x, z, o = {}) { const id = 'ent' + (1 + (Math.random() * 10 | 0)); const b = A.voices[id]; if (!b) return; playBuf(b, x, z, { rate: o.rate || rnd(0.85, 1.05), vol: o.vol || 0.7, lp: o.lp || 6000 }); }
+DREAD_EVENTS.entity = { w: 3, min: 25, fn() { const p = dreadPoint(16, 30); entitySound(p.x, p.z, { vol: 0.45, lp: 1400, rate: rnd(0.7, 0.9) }); } };

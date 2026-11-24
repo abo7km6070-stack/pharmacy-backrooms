@@ -240,6 +240,8 @@ class Monster {
       // never stay stuck: if no path can be found for a while, pick somewhere else
       if (!this.path.length && this.target) { this.noPath = (this.noPath || 0) + dt; if (this.noPath > 2.5) { this.noPath = 0; this.target = null; const c = this.wanderCell(); if (c) this.goto(c[0], c[1]); } } else this.noPath = 0;
     }
+    // something not-quite-human in him: an entity growl from where he is, muffled through the walls
+    if (this.state !== 'chase' && d < 26 && Game.t > (this.entT || 0)) { this.entT = Game.t + rnd(11, 20); if (!losCheck(this.pos.x, this.pos.z, P.x, P.z) || d > 12) entitySound(this.pos.x, this.pos.z, { vol: 0.75, rate: rnd(0.8, 0.95) }); }
     // mumbling to himself: you can hear him coming before you see him
     if (this.state !== 'chase' && d < 18 && Game.t > (this.idleT || 0)) { this.idleT = Game.t + rnd(7, 12); const L = VOICE_LINES[this.type].idle; if (L) voice(pick(L), this.pos.x, this.pos.z, { vol: 0.9 }); }
     // catch
@@ -252,7 +254,7 @@ class Monster {
     if (d < 7 && Game.t > (this.breathT || 0)) { this.breathT = Game.t + (this.state === 'chase' ? 0.9 : 1.8); SFX.mbreath && SFX.mbreath(this.pos.x, this.pos.z, this.type, this.state === 'chase'); }
     Game.stress = Math.max(Game.stress, clamp(1 - d / 14, 0, 1) * (this.state === 'chase' ? 1 : 0.6));
   }
-  onSpot() { this.state = 'chase'; this.spotT = Game.t; this.voiceT = Game.t + 0.4; if (Game.t - (this.lastScream || -99) > 20) { this.lastScream = Game.t; sample('sfx_sting', 0, 0, { flat: true, vol: 0.9 }); if (Math.random() < 0.5) later(() => sample(SCREAM_OF[this.type], this.pos.x, this.pos.z, { vol: 0.8 }), 300); } }
+  onSpot() { this.state = 'chase'; this.spotT = Game.t; this.voiceT = Game.t + 0.4; if (Game.t - (this.lastScream || -99) > 20) { this.lastScream = Game.t; sample('sfx_sting', 0, 0, { flat: true, vol: 0.9 }); entitySound(this.pos.x, this.pos.z, { vol: 1.1, lp: 9000 }); if (Math.random() < 0.5) later(() => sample(SCREAM_OF[this.type], this.pos.x, this.pos.z, { vol: 0.8 }), 300); } }
   taunt(chase) { const v = VOICE_LINES[this.type]; const lines = chase && v.chase ? v.chase : [v.taunt1, v.taunt2, v.quiz || v.lure].filter(Boolean); if (!voice(pick(lines), this.pos.x, this.pos.z) && Math.random() < 0.5) SFX.laughSynth(this.pos.x, this.pos.z, this.type === 'amal' ? 1.5 : this.type === 'minhaj' ? 0.85 : 0.75); }
   followPath(dt, spd) {
     const G = World.grid; this.repath += dt;
