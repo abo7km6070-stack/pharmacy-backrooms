@@ -181,7 +181,7 @@ function knockSpawn(m, voiceId) { const G = World.grid, P = Player.pos; let best
    FLOOR 1 · الدور الأرضي — د. مجاهد
    ===================================================================== */
 Object.assign(NOTES, {
-  F1: { head: 'ورقة تحت يدك… بخط مرتجف', sig: '— طالب نام هنا قبلك', text: 'إذا صحيت والقاعة فاضية… <b>لا تصرخ.</b><br>الكلية ما تطلع لبرا. جربت الباب الرئيسي <b>٣٦ مرة</b>، وكل مرة أرجع لنفس المقعد.<br>الطريق الوحيد: <b>الدرج اللي آخر الممر الرئيسي</b>. عليه شتر حديد، وما يرتفع إلا إذا رجعت الكهرباء:<br>١) مفتاح غرفة الكهرباء في <b>درج مكتب الاستقبال</b> (عند المدخل).<br>٢) فيه <b>٣ فيوزات</b> في القاعات <b>المظلمة</b>.<br>٣) ركّبها في <b>غرفة الكهرباء</b> (آخر الممر الغربي، جنب الدرج الجانبي).<br><br><b>د. مجاهد ما طلع.</b> يسمع كل شي. إذا سمعت «يا زول»… لا ترد، لا تركض. انحنِ وادخل تحت طاولة قبل لا يشوفك، أو ازحف في فتحة بالجدار.<br>والبالونات؟ إذا فقعت وحدة… <b>يجي يركض.</b> استخدمها عشان تبعده عنك.' },
+  F1: { head: 'ورقة تحت يدك… بخط مرتجف', sig: '— طالب نام هنا قبلك', text: 'إذا صحيت والقاعة فاضية… <b>لا تصرخ.</b><br>الكلية ما تطلع لبرا. جربت الباب الرئيسي <b>٣٦ مرة</b>، وكل مرة أرجع لنفس المقعد.<br>د. مجاهد ما يفتح شتر الدرج إلا إذا <b>نجحت في الكويز العملي</b>: تحضّر <b>معلّق باراسيتامول</b>.<br>١) مفتاح <b>مختبر التحضير (قاعة ١٠٨)</b> في درج مكتب الاستقبال.<br>٢) اجمع المواد الأربع — مكتوب مكانها فوق يمين الشاشة.<br>٣) حضّرها في المختبر <b>بالترتيب المكتوب على السبورة</b>.<br>٤) سلّمها في <b>صندوق الكويز عند الدرج</b>.<br><br><b>هو يسمع كل شي.</b> إذا سمعت «يا زول»… لا ترد، لا تركض. انحنِ وادخل تحت طاولة قبل لا يشوفك، أو ازحف في فتحة بالجدار.<br>البالونات: إذا فقعت وحدة <b>يجي يركض لها</b>. استخدمها عشان تبعده عنك.' },
   F2: { head: 'ورقة على درابزين الدور الثاني', sig: '— ؟', text: 'الدور الثاني.<br>• <b>يسار</b>: قسم الطلاب (المختبرات). <b>يمين</b>: قسم الطالبات… <b>الأبواب مقفلة. لا تحاول.</b><br>• بوابة الدرج للدور الثالث تبي <b>٤ مفاتيح</b> تلفها <b>خلال ٥ ثواني</b>.<br>• ٣ مفاتيح في <b>خزائن المعاطف</b> بالمختبرات، والرابع في <b>مخزن الصيدلية الافتراضية</b>… وقفله أرقام ألوان.<br>• د. منهاج <b>ما يقدر يفتح الأبواب</b>، بس <b>يقلّد الأصوات</b>. لا تروح للصوت.' },
   F3: { head: 'ورقة على باب الدرج', sig: '— فني الصيانة', text: 'الدور الثالث: مكاتب الدكاترة والإدارة… و<b>قاعة M</b>.<br>• النور يطفي كل شوي، ود. أمل <b>تمشي في الظلام</b>.<br>• إذا طفى: <b>ثبّت نور الكشاف على وجهها</b>. النور يوقفها. إذا شلته… تقرب.<br>• كلمة سر قاعة M في <b>مكتب وكيل الكلية</b> (يمين).<br>• قاعة M: <b>يسار</b> بعد مكاتب الدكاترة، وبعدين <b>يمين</b>.' },
   store: { head: 'ورقة على باب المخزن', sig: '— مشرف المختبر', text: 'رمز المخزن = ألوان العلب في الرفوف المعلّم عليها <b>✚ أحمر</b> في <b>الصيدلية الافتراضية</b>،<br><b>من الرقم الأصغر للأكبر</b>.' },
@@ -200,13 +200,13 @@ LEVELS.L0 = {
     planFloor(G, 1, names);
     // sickly fluorescent yellow-white: the college at night, but wrong
     setupEnv({ fog: 0x0d0c08, fogD: 0.034, sky: 0xd8cfa8, ground: 0x2a2416, amb: 0.42, exposure: 1.05, bloom: 0.6, bloomT: 0.78, hum: 1.0, drone: 0.32, tint: [1.06, 1.0, 0.8], grain: 0.05 });
-    G.halls.forEach(r => { const ds = hallDoors(G, r); ds.forEach(d => doorSign(d, r.name, 'B4-' + r.name.replace(/[^\d٠-٩]/g, ''))); });
+    G.halls.forEach((r, i) => { if (i === 7) { r.name = 'مختبر التحضير ١٠٨'; hallDoors(G, r, { locked: true, key: 'labkey', lockedMsg: 'مختبر التحضير مقفل. المفتاح في درج مكتب الاستقبال (عند المدخل).' }).forEach(d => doorSign(d, 'مختبر التحضير', 'LAB 108', '#0f5135')); return; } const ds = hallDoors(G, r); ds.forEach(d => doorSign(d, r.name, 'B4-' + r.name.replace(/[^\d٠-٩]/g, ''))); });
     G.offices.forEach((r, i) => { const d = officeDoor(G, r); doorSign(d, pick(['مكتب', 'مكتب أكاديمي', 'مكتب إداري']), (r.side === 'w' ? 'W' : 'E') + (i + 1)); });
-    const ed = addDoor(G, 1, 1, 2, 1, { tex: TEX.metalDoor, trim: 0x555, locked: true, key: 'eleckey', lockedMsg: 'غرفة الكهرباء مقفلة. المفتاح في درج مكتب الاستقبال (عند المدخل).' }); doorSign(ed, 'غرفة الكهرباء', '⚡', '#8a1a12');
+    const ed = addDoor(G, 1, 1, 2, 1, { tex: TEX.metalDoor, trim: 0x555, locked: true, lockedMsg: 'غرفة الكهرباء مقفلة. المفتاح في درج مكتب الاستقبال (عند المدخل).' }); doorSign(ed, 'غرفة الكهرباء', '⚡', '#8a1a12');
     G.wc.forEach(r => { const d = addDoor(G, r.x0 === 3 ? 3 : 27, 1, r.x0 === 3 ? 2 : 28, 1, { tex: TEX.woodDoor, trim: 0x8a8f94 }); doorSign(d, 'دورة مياه', 'WC', '#1f4f6e'); });
     const hsd = addDoor(G, 25, 1, 24, 1, { tex: TEX.glassDoor, trim: 0x9aa0a6, locked: true, lockedMsg: 'باب زجاج… وراه ممر العلوم الطبية التطبيقية. مقفل. وفيه أحد واقف ورا الزجاج؟' }); doorSign(hsd, 'العلوم الطبية التطبيقية', '←', '#1f4f6e');
     buildShell(G, { skylight: true });
-    G.halls.forEach(r => lectureHall(G, r, r.name)); G.offices.forEach(r => officeRoom(G, r)); G.wc.forEach(r => restroom(G, r));
+    G.halls.forEach((r, i) => i !== 7 && lectureHall(G, r, r.name)); G.offices.forEach(r => officeRoom(G, r)); G.wc.forEach(r => restroom(G, r));
     // the hall where you wake up
     const home = G.halls[4], HW = roomW(home); Game.flags.home = home;
     home.board.material.map = signTex({ w: 1024, h: 420, bg: '#f4f6f6', border: '#9aa0a6', bw: 14, age: true, lines: [{ t: 'كويز PHP 363', y: 100, s: 60, c: '#1a3a7a', f: 'Arial' }, { t: 'الكويز ما خلص', y: 230, s: 96, c: '#b10d0d' }, { t: 'ارجع لمقعدك', y: 350, s: 60, c: '#b10d0d' }] });
@@ -231,32 +231,30 @@ LEVELS.L0 = {
     World.fixtures.forEach(f => { if (Math.random() < 0.25) f.flick = Math.max(f.flick, rnd(0.2, 0.5)); });
     const sh = mainStairs(G, { label: 'الدرج مقفل', sub: 'الكهرباء مفصولة', cond: () => Game.flags.power, onTop: () => noclipTo('L1') }); Game.flags.shutter = sh;
     sideStairsBlocked(G);
-    // reception drawer → key
-    addInteract({ pos: { x: 16.6 * CS, y: 1, z: 19.6 * CS }, r: 2.2, once: true, label: 'فتّش درج الاستقبال', use: () => { SFX.doorOpen(16.6 * CS, 19.6 * CS); Game.inv.eleckey = 1; Game.held = 'eleckey'; Game.updateInv(); UI.msg('لقيت <b>مفتاح غرفة الكهرباء</b> 🗝️ … ومعه ورقة: «لا تلتفت»', 3200); objL0('fuses'); if (!Game.flags.spawned) later(() => l0Spawn(), 6000); } });
-    // fuses: one in each of 3 dark halls, sitting on a desk, glowing faintly
-    const fuseHalls = G.halls.filter(r => r !== home).sort(() => Math.random() - 0.5).slice(0, 3); Game.flags.fuseHalls = fuseHalls.map(r => r.name);
-    fuseHalls.forEach(r => { const W = roomW(r); const d = World.hides.filter(h => h.type === 'table' && h.x > W.x0 && h.x < W.x1 && h.z > W.z0 && h.z < W.z1); const t = d.length ? pick(d) : { x: W.cx, z: W.cz }; pickupKind('fuse', t.x, t.z); World.fixtures.forEach(f => { if (f.x > W.x0 && f.x < W.x1 && f.z > W.z0 && f.z < W.z1) { f.on = false; f.base = 0; } }); });
-    G.offices.slice().sort(() => Math.random() - 0.5).slice(0, 3).forEach(r => { const W = roomW(r); pickupKind('coin', W.cx + (r.side === 'w' ? -0.4 : 0.4), W.cz); });
-    G.offices.slice().sort(() => Math.random() - 0.5).slice(0, 4).forEach(r => { const W = roomW(r); pickupKind(pick(['battery', 'bottle', 'bottle', 'vitc']), W.cx + rnd(-0.4, 0.4), W.cz + 0.5, 0.78); });
-    pickupKind('bottle', HW.x0 + 1.5, HW.z0 + 1.2, 0.02);
-    pickupKind('redjuice', 16.6 * CS, 18.9 * CS, 1.15);
-    // fuse panel
-    const ew = roomW(G.elec); const panel = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 0.15), stdMat({ color: 0x5a6066, metalness: 0.6 })); panel.position.set(ew.cx, 1.4, ew.z0 + 0.12); World.group.add(panel);
-    const slots = [0, 1, 2].map(i => { const s = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.24, 0.05), new THREE.MeshStandardMaterial({ color: 0x222, emissive: 0x330000 })); s.position.set(ew.cx - 0.25 + i * 0.25, 1.4, ew.z0 + 0.22); World.group.add(s); return s; });
-    Game.flags.fuses = 0;
-    addInteract({ pos: { x: ew.cx, y: 1.4, z: ew.z0 + 0.4 }, r: 1.8, cond: () => !Game.flags.power, label: () => Game.inv.fuse ? 'ركّب الفيوز' : `لوحة الكهرباء (${ar(Game.flags.fuses)}/٣)`, use: () => {
-      if (!Game.inv.fuse) { SFX.locked(); UI.msg('تحتاج فيوز. الفيوزات في القاعات المظلمة.', 2000); return; }
-      const n = Game.inv.fuse; for (let i = 0; i < n; i++) { slots[Game.flags.fuses].material.emissive.set(0x00aa33); Game.flags.fuses++; } delete Game.inv.fuse; Game.updateInv(); SFX.clank(ew.cx, ew.z0); Game.noise(ew.cx, ew.z0, 14);
-      if (Game.flags.fuses < 3) { UI.msg(`فيوز ${ar(Game.flags.fuses)}/٣ … اللوحة طنّت. أكيد سمعها.`, 2200); objL0('fuses'); return; }
-      powerOn();
-    } });
+    // ===== the practical quiz: compound a Paracetamol suspension =====
+    // reception drawer → lab key
+    addInteract({ pos: { x: 16.6 * CS, y: 1, z: 19.6 * CS }, r: 2.2, once: true, label: 'فتّش درج الاستقبال', use: () => { SFX.doorOpen(16.6 * CS, 19.6 * CS); Game.inv.labkey = 1; Game.held = 'labkey'; Game.updateInv(); UI.msg('لقيت <b>مفتاح مختبر التحضير</b> 🗝️ … وورقة مكتوب فيها: «القاعة ١٠٨»', 3200); Game.flags.gotKey = 1; if (!Game.flags.spawned) later(() => l0Spawn(), 6000); } });
+    // ingredients: one per place, each place written on the board and in the task list
+    const spots = { api: G.halls[1], xan: G.halls[10], pres: G.offices.find(o => o.side === 'e' && o.y0 === 12) };
+    for (const [k, r] of Object.entries(spots)) { const W = roomW(r); let t = World.hides.filter(h => h.type === 'table' && h.x > W.x0 && h.x < W.x1 && h.z > W.z0 && h.z < W.z1); t = t.length ? pick(t) : { x: W.cx, z: W.cz }; spawnItem(k, t.x, t.z, 0.79); r.ingredient = k; }
+    Game.flags.spots = { api: spots.api.name, xan: spots.xan.name, pres: 'مكتب E' + (G.offices.indexOf(spots.pres) + 1) + ' (الممر الشرقي)' };
+    // purified water from the cooler under the stairs, next to the seating
+    const cool = new THREE.Group(); const cb = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.0, 0.4), stdMat({ color: 0xe8e8e8, roughness: 0.4 })); cb.position.y = 0.5; cool.add(cb); const jug = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.45, 16), new THREE.MeshStandardMaterial({ color: 0x7fb8e8, transparent: true, opacity: 0.6, roughness: 0.05 })); jug.position.y = 1.25; cool.add(jug); cool.position.set(13.5 * CS, 0, 3.6 * CS); World.group.add(cool); addBoxCollider(13.5 * CS - 0.25, 3.6 * CS - 0.25, 13.5 * CS + 0.25, 3.6 * CS + 0.25, 0, 1.5);
+    addInteract({ pos: { x: 13.5 * CS, y: 1.1, z: 3.6 * CS }, r: 1.8, cond: () => !Game.inv.water && !Game.flags.made, label: 'عبّي ماء مُنقّى 💧', use: () => { Game.inv.water = 1; Game.updateInv(); SFX.drip(13.5 * CS, 3.6 * CS); Game.noise(13.5 * CS, 3.6 * CS, 8); UI.msg('أخذت <b>ماء مُنقّى</b> 💧 (الكولر يقرقر… بصوت عالي)', 2400); } });
+    // the compounding lab (hall 108)
+    const lab = G.halls[7], LW = roomW(lab); Game.flags.lab = lab;
+    labBench(LW);
+    // hand-in box at the foot of the stairs
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.45), stdMat({ color: 0x0f5135, roughness: 0.5 })); box.position.set(13.9 * CS, 0.45, 3 * CS + 0.55); World.group.add(box); addBoxCollider(13.9 * CS - 0.3, 3 * CS + 0.3, 13.9 * CS + 0.3, 3 * CS + 0.8, 0, 1);
+    poster(signTex({ w: 512, h: 200, bg: '#0f5135', lines: [{ t: 'تسليم الكويز العملي', y: 80, s: 46, c: '#fff' }, { t: 'د. مجاهد', y: 155, s: 40, c: '#bfe8d0' }] }), 13.9 * CS, 1.25, 3 * CS + 0.78, 0, 0.7, 0.28);
+    addInteract({ pos: { x: 13.9 * CS, y: 1, z: 3 * CS + 0.9 }, r: 1.9, cond: () => !Game.flags.power, label: () => Game.inv.susp ? 'سلّم المعلّق 🧴' : 'صندوق تسليم الكويز (فاضي)', use: () => { if (!Game.inv.susp) { SFX.locked(); UI.msg('لازم تحضّر <b>معلّق الباراسيتامول</b> أول، في مختبر التحضير (قاعة ١٠٨).', 2600); return; } delete Game.inv.susp; Game.updateInv(); SFX.clank(13.9 * CS, 3 * CS); powerOn(); } });
     // you fell asleep in his quiz. wake up at your desk.
     const desks = World.hides.filter(h => h.type === 'table' && h.x > HW.x0 && h.x < HW.x1 && h.z > HW.z0 && h.z < HW.z1).sort((a, b) => a.z - b.z);
     const myDesk = desks[0] || { x: HW.cx, z: HW.z0 + 3 }; Game.flags.myDesk = myDesk;
     Player.pos.set(myDesk.x, 0, myDesk.z - 0.75); Player.yaw = Math.PI; Player.pitch = -1.1;
     const paper = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.3), new THREE.MeshStandardMaterial({ color: 0xe9e0c8, side: THREE.DoubleSide })); paper.rotation.x = -Math.PI / 2; paper.rotation.z = 0.3; paper.position.set(myDesk.x + 0.15, 0.79, myDesk.z); World.group.add(paper);
     World.interact.filter(o => o.label === 'ادخل تحت الطاولة' && Math.abs(o.pos.x - myDesk.x) < 0.01 && Math.abs(o.pos.z - myDesk.z) < 0.01).forEach(o => { const c0 = o.cond; o.cond = () => Game.flags.read && (!c0 || c0()); });
-    addInteract({ pos: { x: myDesk.x, y: 0.8, z: myDesk.z }, r: 1.7, cond: () => !Player.hidden, label: 'اقرأ الورقة اللي تحت يدك', use: () => openNote(Object.assign({}, NOTES.F1, { after: () => { if (!Game.flags.read) { Game.flags.read = 1; objL0('leave'); } } })) });
+    addInteract({ pos: { x: myDesk.x, y: 0.8, z: myDesk.z }, r: 1.7, cond: () => !Player.hidden, label: 'اقرأ الورقة اللي تحت يدك', use: () => openNote(Object.assign({}, NOTES.F1, { after: () => { if (!Game.flags.read) { Game.flags.read = 1; } } })) });
     graffiti(G, 2, 12, 'w', 'لا تركض… يسمعك', { color: 'rgba(130,12,8,0.8)' }); graffiti(G, 21, 9, 'n', '|||| |||| |||| |||| |||| |||| |', { color: 'rgba(25,18,10,0.8)', size: 46 }); graffiti(G, 28, 4, 'e', 'الباب ما يطلع لبرا');
     graffiti(G, 15, 21, 'w', 'ارجع لمقعدك', { color: 'rgba(130,12,8,0.75)' });
     loreNote(G, 0, 7, 'w', 'l0a'); loreNote(G, 30, 13, 'e', 'l0b');
@@ -267,7 +265,7 @@ LEVELS.L0 = {
   update(dt) {
     const F = Game.flags, t = Game.t - F.t0, P = Player.pos, HW = roomW(F.home);
     // waking up: eyes open, blink, head lifts off the desk
-    if (t < 4.5) { const k = clamp(t / 4.5, 0, 1); R.P.dark.value = Math.max(0, 1 - k * 1.3 + (t > 1.6 && t < 1.9 ? 0.8 : 0) + (t > 2.5 && t < 2.65 ? 0.6 : 0)); if (t < 3.5) Player.pitch = lerp(-1.1, -0.15, clamp((t - 1.2) / 2.2, 0, 1)); if (!F.wake) { F.wake = 1; muffle(true); later(() => muffle(false), 3500); later(() => { UI.msg('…صحيت. القاعة فاضية. والساعة ٣ الفجر.', 3400); }, 1800); later(() => { if (!F.read) objL0('read'); }, 5000); } }
+    if (t < 4.5) { const k = clamp(t / 4.5, 0, 1); R.P.dark.value = Math.max(0, 1 - k * 1.3 + (t > 1.6 && t < 1.9 ? 0.8 : 0) + (t > 2.5 && t < 2.65 ? 0.6 : 0)); if (t < 3.5) Player.pitch = lerp(-1.1, -0.15, clamp((t - 1.2) / 2.2, 0, 1)); if (!F.wake) { F.wake = 1; muffle(true); later(() => muffle(false), 3500); later(() => { UI.msg('…صحيت. القاعة فاضية. والساعة ٣ الفجر.', 3400); }, 1800);  } }
     else if (R.P.dark.value) R.P.dark.value = 0;
     const inHome = P.x > HW.x0 && P.x < HW.x1 && P.z > HW.z0 && P.z < HW.z1;
     if (!inHome && !F.left) { F.left = 1; F.leftT = Game.t; if (!F.read) F.read = 1; objL0('reception'); }
@@ -275,16 +273,72 @@ LEVELS.L0 = {
     if (F.left && !F.sighted) { if (Game.t - F.leftT > 1.5) trySighting(); if (Game.t - F.leftT > 45) { F.sighted = 1; l0Spawn(); } }
     if (!F.spawned && t > 170) l0Spawn();
     if (F.spawned && !F.selfPop && Game.t - F.spawnT > 50 && Math.random() < dt * 0.015) { F.selfPop = 1; const b = (F.balloons || []).find(b => b.b.parent && Math.hypot(b.b.position.x - P.x, b.b.position.z - P.z) > 12); if (b) { b.pop(); UI.msg('…بالونة فقعت لحالها. وهو رايح لها.', 2400); } }
-    const nf = Game.inv.fuse | 0; if (nf !== (F.lastFuse | 0)) { F.lastFuse = nf; objL0('fuses'); }
+    if (Game.t > (F.taskT || 0)) { F.taskT = Game.t + 0.3; objL0(); }
     if (F.hsKnock === undefined && Math.hypot(P.x - 24 * CS, P.z - 1.5 * CS) < 3) { F.hsKnock = 1; later(() => { SFX.knock(25.5 * CS, 1.5 * CS, 3); UI.msg('…أحد يطق من ورا الباب الزجاج', 2200); }, 800); }
   },
   respawn() { respawnFloor(() => { const F = Game.flags; if (F.power) { Player.pos.set(15.5 * CS, 0, 6 * CS); Player.yaw = 0; } else { const d = F.myDesk; Player.pos.set(d.x, 0, d.z - 0.75); Player.yaw = Math.PI; } }); }
 };
-function objL0(step) {
-  const F = Game.flags;
-  const T = { read: ['اقرأ الورقة اللي على طاولتك', 'اضغط ' + keyLabel(Input.binds.use)], leave: ['اطلع من القاعة', 'الباب ورا ظهرك'], reception: ['روح لمكتب الاستقبال', 'عند المدخل · آخر الممر الرئيسي'],
-    fuses: [`لقّ الفيوزات (${ar((F.fuses || 0) + (Game.inv.fuse | 0))}/٣) وركّبها`, F.fuses ? 'غرفة الكهرباء · آخر الممر الغربي جنب الدرج الجانبي' : 'في القاعات المظلمة… ثم غرفة الكهرباء'] }[step];
-  if (T) UI.objective(T[0], T[1]);
+/* ---------- the compounding lab ---------- */
+ITEMS.api = { name: 'باراسيتامول (بودرة)', icon: '⚪', desc: 'المادة الفعالة. ٣ جرام.', use() { return false; } };
+ITEMS.xan = { name: 'زانثان جم (عامل تعليق)', icon: '🟤', desc: 'يخلي البودرة معلّقة وما تترسب.', use() { return false; } };
+ITEMS.pres = { name: 'ميثيل بارابين (مادة حافظة)', icon: '🧪', desc: 'يحمي المعلّق من البكتيريا.', use() { return false; } };
+ITEMS.water = { name: 'ماء مُنقّى', icon: '💧', desc: 'الحامل (Vehicle).', use() { return false; } };
+ITEMS.susp = { name: 'معلّق باراسيتامول ١٢٠ مل', icon: '🧴', desc: 'سلّمه في صندوق الكويز عند الدرج.', use() { return false; } };
+ITEMS.labkey = { name: 'مفتاح مختبر التحضير', icon: '🗝️', desc: 'يفتح قاعة ١٠٨.', use() { return false; } };
+['api', 'xan', 'pres', 'water', 'susp', 'labkey'].forEach(k => { INV_NAMES[k] = ITEMS[k].name; INV_ICONS[k] = ITEMS[k].icon; INV_DESC[k] = ITEMS[k].desc; });
+const ING_ORDER = ['api', 'xan', 'water', 'pres'];
+const _itemMesh0 = itemMesh;
+itemMesh = function (kind) {
+  const g = _itemMesh0(kind); if (g.children.length) return g;
+  const jar = (col, cap, label) => { const j = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.12, 16), new THREE.MeshStandardMaterial({ color: col, roughness: 0.3, transparent: true, opacity: 0.85 })); j.position.y = 0.06; g.add(j); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.03, 16), stdMat({ color: cap })); c.position.y = 0.135; g.add(c); const l = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.05), new THREE.MeshStandardMaterial({ map: signTex({ w: 128, h: 96, bg: '#fff', lines: [{ t: label, y: 60, s: 30, c: '#111', f: 'Arial' }] }) })); l.position.set(0, 0.06, 0.051); g.add(l); };
+  if (kind === 'api') jar(0xf4f4f4, 0x1e5bc6, 'APAP');
+  else if (kind === 'xan') jar(0xc8a878, 0x8a5a2a, 'XAN');
+  else if (kind === 'pres') jar(0xdde8ff, 0xc62828, 'MP');
+  else if (kind === 'susp') { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.16, 16), new THREE.MeshStandardMaterial({ color: 0x5a2a10, roughness: 0.1, transparent: true, opacity: 0.85 })); b.position.y = 0.08; g.add(b); }
+  else if (kind === 'bottle') { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.2, 12), new THREE.MeshStandardMaterial({ color: 0x9fd8c8, transparent: true, opacity: 0.6, roughness: 0.05 })); b.position.y = 0.1; g.add(b); }
+  else if (kind === 'coin') { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.005, 20), new THREE.MeshStandardMaterial({ color: 0xc8a040, metalness: 0.9, roughness: 0.3 })); c.position.y = 0.01; g.add(c); }
+  return g;
+};
+function labBench(LW) {
+  // benches, a balance, a mortar & pestle, beakers — and the compounding station by the board
+  const top = stdMat({ color: 0x2a2e33, roughness: 0.4 }), cab = stdMat({ color: 0xd8dcdc, roughness: 0.5 });
+  for (const dz of [3.2, 6.6]) { prop(new THREE.BoxGeometry(LW.x1 - LW.x0 - 3, 0.88, 1.1), cab, LW.cx, 0.44, LW.z0 + dz, 0, true); prop(new THREE.BoxGeometry(LW.x1 - LW.x0 - 2.9, 0.05, 1.2), top, LW.cx, 0.9, LW.z0 + dz, 0, false); }
+  const sx = LW.cx, sz = LW.z0 + 3.2; // station on the first bench, facing the door
+  const mort = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.1, 16), stdMat({ color: 0xf0f0f0, roughness: 0.4 })); mort.position.set(sx - 0.5, 0.98, sz); World.group.add(mort);
+  const bal = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.3), stdMat({ color: 0x222, metalness: 0.5 })); bal.position.set(sx + 0.5, 0.97, sz); World.group.add(bal);
+  const beak = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.18, 16, 1, true), new THREE.MeshStandardMaterial({ color: 0xcfe8f0, transparent: true, opacity: 0.35, side: THREE.DoubleSide })); beak.position.set(sx, 1.02, sz); World.group.add(beak);
+  const fill = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.01, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x000000 })); fill.position.set(sx, 0.94, sz); fill.visible = false; World.group.add(fill); Game.flags.beakerFill = fill;
+  const L = new THREE.PointLight(0xfff2d0, 0.9, 5); L.position.set(sx, 2.2, sz); World.group.add(L);
+  poster(signTex({ w: 1024, h: 520, bg: '#f4f6f6', border: '#9aa0a6', bw: 14, age: true, lines: [{ t: 'معلّق باراسيتامول 120 mL', y: 80, s: 60, c: '#1a3a7a' }, { t: '١) باراسيتامول (APAP) — اطحنه', y: 170, s: 44, c: '#222' }, { t: '٢) زانثان جم — عامل التعليق', y: 245, s: 44, c: '#222' }, { t: '٣) الماء المُنقّى — شوي شوي', y: 320, s: 44, c: '#222' }, { t: '٤) ميثيل بارابين — الحافظة', y: 395, s: 44, c: '#222' }, { t: 'رجّ قبل الاستعمال', y: 470, s: 40, c: '#b10d0d' }] }), sx, 1.7, LW.z0 + 0.13, 0, 3.4, 1.72);
+  addInteract({ pos: { x: sx, y: 1, z: sz + 0.7 }, r: 1.9, cond: () => !Game.flags.made, label: () => { const miss = ING_ORDER.filter(k => !Game.inv[k]); return miss.length ? `محطة التحضير (ناقصك ${ar(miss.length)})` : 'حضّر المعلّق ⚗️'; }, use: () => {
+    const miss = ING_ORDER.filter(k => !Game.inv[k]); if (miss.length) { SFX.locked(); UI.msg('ناقصك: ' + miss.map(k => '<b>' + ITEMS[k].name + '</b>').join('، '), 3200); return; }
+    openKeypad({ title: 'حضّر المعلّق ⚗️', hint: 'حط المواد بالترتيب المكتوب على السبورة', len: 4, code: ING_ORDER, keys: [{ id: 'water', color: '#3a7fc0', label: '💧 ماء', name: 'ماء' }, { id: 'pres', color: '#c62828', label: '🧪 بارابين', name: 'بارابين' }, { id: 'api', color: '#e8e8e8', label: '⚪ APAP', name: 'باراسيتامول' }, { id: 'xan', color: '#8a5a2a', label: '🟤 زانثان', name: 'زانثان' }].sort(() => Math.random() - 0.5),
+      onOk: () => { // mixing makes noise: shake for 4 s and he hears it
+        Player.frozenT = Game.t + 4; Game.flags.mixing = Game.t; fill.visible = true; fill.material.color.set(0xf0e6d0); SFX.clank(sx, sz); UI.msg('⚗️ تخلط… <b>الصوت عالي</b>. أكيد سمعك.', 3500); alertDoctors(sx, sz, true);
+        let k = 0; const iv = setInterval(() => { k++; at(sx, sz, (g, t) => noise(g, t, 0.15, 'bandpass', 2400, 4, 0.5)); fill.scale.y = 1 + k * 1.5; fill.position.y = 0.94 + k * 0.007; if (k >= 10) { clearInterval(iv); Game.flags.made = 1; ING_ORDER.forEach(i => delete Game.inv[i]); Game.inv.susp = 1; Game.held = 'susp'; Game.updateInv(); SFX.success(); UI.msg('حضّرت <b>معلّق باراسيتامول</b> 🧴 … الحين سلّمه عند الدرج. <b>بسرعة.</b>', 3600); } }, 400);
+      } });
+  } });
+}
+/* ---------- the task list (top-right, always visible) ---------- */
+UI.tasks = function (title, items) {
+  const html = `<div id="objT">${title}</div>` + items.map(i => `<div class="tk${i.done ? ' done' : ''}"><span>${i.done ? '✔' : '◻'}</span>${i.t}${i.where ? `<em>${i.where}</em>` : ''}</div>`).join('');
+  const o = $('obj'); if (o.dataset.h !== html) { o.innerHTML = html; o.dataset.h = html; o.classList.remove('flash'); void o.offsetWidth; o.classList.add('flash'); } o.classList.add('on');
+};
+UI.objective = function (t, sub) { const o = $('obj'); const html = `<div id="objT">${t}</div>` + (sub ? `<div class="tk"><span>➜</span>${sub}</div>` : ''); if (o.dataset.h !== html) { o.innerHTML = html; o.dataset.h = html; o.classList.remove('flash'); void o.offsetWidth; o.classList.add('flash'); } o.classList.add('on'); };
+function objL0() {
+  const F = Game.flags, I = Game.inv, S = F.spots || {};
+  if (!F.read) return UI.tasks('المهمة', [{ t: 'اقرأ الورقة اللي على طاولتك', where: 'اضغط ' + keyLabel(Input.binds.use) }]);
+  if (F.power) return UI.tasks('اهرب!', [{ t: 'اطلع الدرج للدور الثاني', where: 'آخر الممر الرئيسي · الشتر انفتح' }]);
+  const has = k => I[k] || F.made;
+  const items = [
+    { t: 'خذ مفتاح المختبر', where: 'درج مكتب الاستقبال · عند المدخل', done: !!F.gotKey },
+    { t: ITEMS.api.name, where: S.api, done: !!has('api') },
+    { t: ITEMS.xan.name, where: S.xan, done: !!has('xan') },
+    { t: ITEMS.water.name, where: 'الكولر تحت الدرج', done: !!has('water') },
+    { t: ITEMS.pres.name, where: S.pres, done: !!has('pres') },
+    { t: 'حضّر المعلّق', where: 'مختبر التحضير · قاعة ١٠٨', done: !!F.made },
+    { t: 'سلّمه في صندوق الكويز', where: 'عند الدرج آخر الممر', done: false }];
+  UI.tasks('الكويز العملي: معلّق باراسيتامول', items);
 }
 /* look down a corridor… and he is standing there. then the light dies and he's gone */
 function trySighting() {
@@ -302,7 +356,7 @@ function finishSighting(m, wx, wz) {
   const near = World.fixtures.filter(f => Math.hypot(f.x - wx, f.z - wz) < 7); near.forEach(f => { f.base = 1; f.flick = 0.6; }); World.blackoutChanged = true;
   setBed('hum', 0.15, 0.3); setBed('drone', 0.05, 0.3); // the building holds its breath
   later(() => { SFX.mbreath && SFX.mbreath(wx, wz, 'mujahid', false); }, 900);
-  later(() => { near.forEach(f => { f.base = 0; f.flick = 0; }); World.blackoutChanged = true; SFX.bulbPop(wx, wz); sample('sfx_sting', 0, 0, { flat: true, vol: 0.9 }); Game.shake(0.3); m.root.visible = false; m.place(-99, -99); setBed('hum', 1.0, 2); setBed('drone', 0.4, 2); }, 2600);
+  later(() => { near.forEach(f => { f.base = 0; f.flick = 0; }); World.blackoutChanged = true; SFX.bulbPop(wx, wz); entitySound(wx, wz, { vol: 0.8, lp: 3000, rate: 0.8 }); Game.shake(0.3); m.root.visible = false; m.place(-99, -99); setBed('hum', 1.0, 2); setBed('drone', 0.4, 2); }, 2600);
   later(() => { UI.msg('…كان واقف هناك. د. مجاهد.', 2600); }, 3200);
   later(() => l0Spawn(), 16000);
 }
@@ -320,7 +374,7 @@ function exitLoop() {
     if (n === 1) (F.balloons || []).forEach(b => b.b.parent && b.b.material.color.set(0x1a1a1a));
     if (n === 2) F.banner.material.map = signTex({ w: 1024, h: 300, bg: '#ffffff', age: true, lines: [{ t: 'يوم حصاد الطلاب', y: 140, s: 90, c: '#8a0d0d' }, { t: 'ارجع لمقعدك', y: 240, s: 56, c: '#8a0d0d' }] });
     if (n >= 2 && !F.spawned) l0Spawn();
-    objL0(F.fuses || Game.inv.eleckey ? 'fuses' : 'reception');
+    objL0();
   }, 1100);
 }
 function l0Spawn() { const F = Game.flags; if (F.spawned) return; F.spawned = true; F.spawnT = Game.t; knockSpawn(Game.monsters[0], 'm1'); UI.msg('…<b>طق. طق. طق.</b>', 2200); }
@@ -334,13 +388,12 @@ function alertDoctors(x, z, line = true) {
   });
 }
 function powerOn() {
-  const F = Game.flags; F.power = true; SFX.success(); SFX.rumble(2.5); Game.shake(0.5);
-  UI.msg('⚡ رجعت الكهرباء', 2200);
-  // the lights come back one by one… then the corridor goes dark again except the path to the stairs
-  World.fixtures.forEach((f, i) => { const was = f.on; f.base = 0; later(() => { f.base = 1; f.on = true; World.blackoutChanged = true; }, 200 + (f.z / CS) * 60 + Math.random() * 300); });
-  later(() => { SFX.lightsOff(); World.fixtures.forEach(f => { if (Math.abs(f.x - 15.5 * CS) > 4) f.base = Math.random() < 0.3 ? 1 : 0; }); World.blackoutChanged = true; }, 3800);
-  later(() => { const S = F.shutter; S.target = 1; SFX.elevatorMotor(4); S.sign.visible = false; UI.objective('اطلع الدرج للدور الثاني!', 'الشتر ينفتح… واركض'); }, 1600);
-  later(() => { const m = Game.monsters[0]; if (m.state === 'off') { m.place(15.5 * CS, 21 * CS, Math.PI); m.activate('chase'); } m.state = 'chase'; m.lastSeen = Game.t; m.lastSeenPos = { x: Player.pos.x, z: Player.pos.z }; m.place(m.pos.x, m.pos.z); sample('sfx_sting', Player.pos.x, Player.pos.z, { flat: true }); voice('m11', m.pos.x, m.pos.z, { force: true }); }, 4400);
+  const F = Game.flags; F.power = true; SFX.success(); Game.shake(0.4);
+  UI.msg('… الصندوق انقفل. وصوت من بعيد: <b>«صح… نجحت يا زول.»</b>', 3200);
+  later(() => { voice('m3', 15.5 * CS, 1 * CS, { force: true, flat: true }); }, 600);
+  later(() => { const S = F.shutter; S.target = 1; SFX.elevatorMotor(4); S.sign.visible = false; }, 1600);
+  later(() => { World.fixtures.forEach(f => { if (Math.abs(f.x - 15.5 * CS) > 4) f.base = 0; }); World.blackoutChanged = true; SFX.lightsOff(); }, 3200);
+  later(() => { const m = Game.monsters[0]; if (m.state === 'off') { m.place(15.5 * CS, 21 * CS, Math.PI); m.activate('chase'); } m.state = 'chase'; m.lastSeen = Game.t; m.lastSeenPos = { x: Player.pos.x, z: Player.pos.z }; m.place(m.pos.x, m.pos.z); entitySound(m.pos.x, m.pos.z, { vol: 1.2, lp: 9000 }); voice('m11', m.pos.x, m.pos.z, { force: true }); }, 4400);
 }
 function respawnFloor(place) {
   const F = Game.flags; Game.state = 'play'; Player.vel.set(0, 0, 0); Player.vy = 0; Player.pos.y = 0; Player.onGround = true; Player.pitch = 0; place();

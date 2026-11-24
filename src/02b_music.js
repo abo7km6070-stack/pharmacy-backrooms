@@ -33,12 +33,10 @@ function musicLevel(id) {
   musicStop(Music.cur); Music.cur = null;
   const map = { END: ['mus_party', 0.55] }; // the floors have no music: only the building (see 02c_dread.js)
   const m = map[id]; if (m) { Music.cur = musicTrack(m[0], m[1]); if (Music.cur) { musicFade(Music.cur, m[1], 2.5); if (id === 'L2') Music.cur.s.playbackRate.value = 0.85; } }
-  if (!Music.chase) Music.chase = musicTrack('mus_chase', 0.45);
   Game.partyRecorded = id === 'END' && !!Music.cur; if (Game.partyRecorded && Party.on) partyStop(true);
 }
 function musicFrame(dt) {
   if (!A.ready) return;
-  if (!Music.chase && A.voices.mus_chase) Music.chase = musicTrack('mus_chase', 0.45);
   if (Game.level && Game.state !== 'title' && Music.curId !== Game.level.id) musicLevel(Game.level.id);
   const want = Game.state === 'play' || Game.state === 'bag' ? clamp(Game.chase, 0, 1) : 0;
   if (Math.abs(want - Music.wantChase) > 0.05) { Music.wantChase = want; musicFade(Music.chase, want * Music.chase?.vol || 0, want > 0 ? 0.4 : 2.5); if (Music.cur) musicFade(Music.cur, Music.cur.vol * (1 - want * 0.75), 1); }

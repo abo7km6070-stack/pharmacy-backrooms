@@ -10,7 +10,7 @@ function audioInit() {
   A.master = c.createGain(); A.master.gain.value = store.get('vol', 0.9);
   A.master.connect(comp); comp.connect(c.destination);
   const bus = v => { const g = c.createGain(); g.gain.value = v; g.connect(A.master); return g; };
-  A.amb = bus(1); A.sfx = bus(1); A.mus = bus(0.85); A.body = bus(0.9); A.vox = bus(1.25);
+  A.amb = bus(1); A.sfx = bus(1); A.mus = bus(0.85); A.body = bus(0.9); A.vox = bus(2.6);
   // ambience low-pass (muffled during hide/slowmo)
   A.ambF = c.createBiquadFilter(); A.ambF.type = 'lowpass'; A.ambF.frequency.value = 20000;
   A.amb.disconnect(); A.amb.connect(A.ambF); A.ambF.connect(A.master);
@@ -232,8 +232,8 @@ function voice(id, x, z, opts = {}) {
   const g = c.createGain(); g.gain.value = opts.vol || 1;
   if (opts.flat) { s.connect(g); g.connect(A.vox); }
   else {
-    const p = panner(x, 1.6, z, 2.2, 1.0); const see = World.los ? World.los(Player.pos.x, Player.pos.z, x, z) : true;
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = see ? 18000 : 1400;
+    const p = panner(x, 1.6, z, 5, 0.6); const see = World.los ? World.los(Player.pos.x, Player.pos.z, x, z) : true;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = see ? 18000 : 2600;
     s.connect(g); g.connect(lp); lp.connect(p); p.connect(A.vox); const r = c.createGain(); r.gain.value = 0.4; p.connect(r); r.connect(A.rev);
   }
   s.start(); return buf.duration;
@@ -248,7 +248,7 @@ function audioFrame(dt) {
   A.hbT -= dt; if (stress > 0.25 && A.hbT <= 0) { SFX.heart(clamp(stress, 0.3, 1)); A.hbT = 60 / (62 + 95 * stress); }
   A.brT -= dt; if ((Player.exhausted || Player.stamina < 0.3) && A.brT <= 0) { SFX.breath(1); A.brT = 0.85; }
   const chase = Game.chase;
-  A.chaseG.gain.setTargetAtTime(chase * 0.5, A.ctx.currentTime, chase > 0 ? 0.25 : 2.2);
+  A.chaseG.gain.setTargetAtTime(0, A.ctx.currentTime, 0.5); // no chase "music": just him, your heart and your breath
   A.chaseF.frequency.setTargetAtTime(400 + 2800 * chase * clamp(stress, 0, 1), A.ctx.currentTime, 0.3);
   partyTick(); musicFrame(dt); dreadFrame(dt); bedFrame();
 }
